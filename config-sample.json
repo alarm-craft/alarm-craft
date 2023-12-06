@@ -1,0 +1,128 @@
+{
+    "alarm_config": {
+        "alarm_name_prefix": "myproj-cw-metric-alarm-autogen-",
+        "alarm_actions": [],
+        "default_alarm_params": {
+            "Statistic": "Sum",
+            "Period": 60,
+            "EvaluationPeriods": 1,
+            "Threshold": 1,
+            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TreatMissingData": "notBreaching"
+        },
+        "alarm_tagging": {
+            "division": "alpha"
+        },
+        "api_call_intervals_in_millis": 340
+    },
+    "globals": {
+        "target_resource_name_pattern": "^myproj-(dev|prod)-"
+    },
+    "service_config": {
+        "lambda": {
+            "provider_class_name": "LambdaMetricsProvider",
+            "resource_type_filter": "lambda:function",
+            "target_resource_tags": {
+                "division": "alpha",
+                "myproj:createdBy": "CodePipeline"
+            },
+            "namespace": "AWS/Lambda",
+            "metrics": [
+                "Errors",
+                "Throttled"
+            ]
+        },
+        "stepfunctions": {
+            "provider_class_name": "SfnMetricsProvider",
+            "resource_type_filter": "states:stateMachine",
+            "target_resource_tags": {
+                "division": "alpha",
+                "myproj:createdBy": "CodePipeline"
+            },
+            "namespace": "AWS/States",
+            "metrics": [
+                "ExecutionsFailed",
+                "ExecutionsTimedOut",
+                "ExecutionsAborted",
+                "ExecutionThrottled"
+            ]
+        },
+        "apigateway": {
+            "provider_class_name": "ApiGatewayMetricsProvider",
+            "resource_type_filter": "",
+            "target_resource_tags": {
+                "division": "alpha",
+                "myproj:createdBy": "CodePipeline"
+            },
+            "namespace": "AWS/ApiGateway",
+            "metrics": [
+                "5XXError"
+            ]
+        },
+        "sns": {
+            "provider_class_name": "SnsMetricsProvider",
+            "resource_type_filter": "sns:topic",
+            "target_resource_tags": {
+                "division": "alpha"
+            },
+            "namespace": "AWS/SNS",
+            "metrics": [
+                "NumberOfNotificationsFailed"
+            ]
+        },
+        "sqs-main-queue": {
+            "provider_class_name": "SqsMetricsProvider",
+            "resource_type_filter": "sqs:queue",
+            "target_resource_tags": {
+                "division": "alpha",
+                "myproj:createdBy": "CodePipeline",
+                "myproj:sqs:main-queue": "true"
+            },
+            "namespace": "AWS/SQS",
+            "metrics": [
+                "ApproximateAgeOfOldestMessage",
+                "ApproximateNumberOfMessagesVisible"
+            ],
+            "alarm_param_overrides": {
+                "ApproximateAgeOfOldestMessage": {
+                    "Threshold": 3600,
+                    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+                },
+                "ApproximateNumberOfMessagesVisible": {
+                    "Threshold": 500,
+                    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+                }
+            }
+        },
+        "sqs-dlq": {
+            "provider_class_name": "SqsMetricsProvider",
+            "resource_type_filter": "sqs:queue",
+            "target_resource_tags": {
+                "division": "alpha",
+                "myproj:createdBy": "CodePipeline",
+                "myproj:sqs:dlq": "true"
+            },
+            "namespace": "AWS/SQS",
+            "metrics": [
+                "ApproximateNumberOfMessagesVisible",
+                "ApproximateAgeOfOldestMessage"
+            ],
+            "alarm_param_overrides": {
+                "ApproximateAgeOfOldestMessage": {
+                    "Threshold": 864000,
+                    "ComparisonOperator": "GreaterThanOrEqualToThreshold"
+                }
+            }
+        },
+        "eventbridge": {
+            "provider_class_name": "EventBridgeMetricsProvider",
+            "resource_type_filter": "events:rule",
+            "target_resource_name_pattern": "^myproj-(dev|prod)-event-(polling|codepipeline)",
+            "namespace": "AWS/Events",
+            "metrics": [
+                "FailedInvocations",
+                "ThrottledRules"
+            ]
+        }
+    }
+}

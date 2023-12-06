@@ -1,0 +1,21 @@
+[tool.black]
+line-length = 120
+
+[tool.isort]
+line_length = 120
+multi_line_output = 3
+include_trailing_comma = true
+force_grid_wrap = 0
+combine_as_imports = true
+
+
+[tool.pytest.ini_options]
+# to prevent tests mutate the real aws environments.
+# http://docs.getmoto.org/en/latest/docs/getting_started.html?highlight=default_region#how-do-i-avoid-tests-from-mutating-my-real-infrastructure
+env = [
+  "AWS_ACCESS_KEY_ID=testing",
+  "AWS_SECRET_ACCESS_KEY=testing",
+  "AWS_SECURITY_TOKEN=testing",
+  "AWS_SESSION_TOKEN=testing",
+  "AWS_DEFAULT_REGION=ap-northeast-1",
+]
