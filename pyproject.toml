@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "alarm_craft"
-version = "0.0.1"
+name = "alarm-craft"
+version = "0.0.7"
 authors = [
   { name="Ryo Murai", email="murai.ry@gmail.com" },
 ]
@@ -27,6 +27,9 @@ classifiers = [
 [project.urls]
 Homepage = "https://github.com/ryo-murai/alarm-craft"
 Issues = "https://github.com/ryo-murai/alarm-craft/issues"
+
+[project.scripts]
+alarm-craft = "alarm_craft.cli:run"
 
 [tool.black]
 line-length = 120

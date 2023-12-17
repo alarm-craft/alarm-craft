@@ -27,6 +27,7 @@ pytest-env = "==0.6.2"
 moto = {extras = ["resourcegroupstaggingapi", "apigateway", "cloudwatch"], version = "==3.1.18"}
 openapi-spec-validator = "==0.4.0"
 build = "*"
+twine = "*"
 
 [requires]
 python_version = "3.9"
@@ -35,4 +36,7 @@ python_version = "3.9"
 lint = "flake8 --show-source ."
 mypy = "mypy ."
 test = "pytest --cov=. --cov-branch --cov-report=xml"
+
 build = "python -m build"
+uploadtest = "python -m twine upload --repository testpypi dist/*"
+upload = "python -m twine upload dist/*"
