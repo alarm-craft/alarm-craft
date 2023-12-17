@@ -19,15 +19,14 @@ pep8-naming = "==0.13.2"
 flake8-print = "==5.0.0"
 isort = "==5.10.1"
 mypy = "==0.971"
-
 pytest = "==7.1.3"
 pytest-cov = "==3.0.0"
 pytest-mock = "==3.8.2"
 pytest-freezegun = "==0.4.2"
 pytest-env = "==0.6.2"
-
 moto = {extras = ["resourcegroupstaggingapi", "apigateway", "cloudwatch"], version = "==3.1.18"}
 openapi-spec-validator = "==0.4.0"
+build = "*"
 
 [requires]
 python_version = "3.9"
@@ -36,3 +35,4 @@ python_version = "3.9"
 lint = "flake8 --show-source ."
 mypy = "mypy ."
 test = "pytest --cov=. --cov-branch --cov-report=xml"
+build = "python -m build"

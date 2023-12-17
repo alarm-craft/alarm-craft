@@ -1,3 +1,33 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "alarm_craft"
+version = "0.0.1"
+authors = [
+  { name="Ryo Murai", email="murai.ry@gmail.com" },
+]
+description = "A tool to create AWS CloudWatch Alarms for your resources with specified name and tags"
+readme = "README.md"
+requires-python = ">=3.9"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+    "Environment :: Console",
+    "Environment :: Other Environment",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Information Technology",
+    "Topic :: System :: Monitoring",
+    "Topic :: System :: Systems Administration",
+    "Topic :: Utilities",
+]
+
+[project.urls]
+Homepage = "https://github.com/ryo-murai/alarm-craft"
+Issues = "https://github.com/ryo-murai/alarm-craft/issues"
+
 [tool.black]
 line-length = 120
 
@@ -10,6 +40,10 @@ combine_as_imports = true
 
 
 [tool.pytest.ini_options]
+addopts = [
+    "--import-mode=importlib",
+]
+
 # to prevent tests mutate the real aws environments.
 # http://docs.getmoto.org/en/latest/docs/getting_started.html?highlight=default_region#how-do-i-avoid-tests-from-mutating-my-real-infrastructure
 env = [
