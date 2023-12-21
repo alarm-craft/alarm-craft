@@ -1,19 +1,21 @@
 import json
-from typing import Optional, Union
+from typing import Dict, List, Optional, Union
 
 import jsonschema
 
-ConfigValue = Union[str, int, list["ConfigValue"], dict[str, "ConfigValue"]]  # type: ignore
+ConfigElement = Union[str, int, bool, "ConfigList", "ConfigValue"]
+ConfigList = List[ConfigElement]
+ConfigValue = Dict[str, ConfigElement]
 
 
-def load(file_path: Optional[str]) -> dict[str, ConfigValue]:
+def load(file_path: Optional[str]) -> ConfigValue:
     """Loads configuration from specified file path
 
     Args:
         file_path (str): file path, or None if use the default config
 
     Returns:
-        dict[str, ConfigValue]: config dict
+        ConfigValue: config dict
     """
     if file_path:
         with open(file_path, "r") as f:
@@ -35,7 +37,7 @@ def save_default_config(file_name: str = "config.json") -> None:
         json.dump(_default_config(), file)
 
 
-def _merge_configs(config: dict[str, ConfigValue]) -> dict[str, ConfigValue]:
+def _merge_configs(config: ConfigValue) -> ConfigValue:
     glo = config.get("globals")
     if not glo:
         return config
@@ -45,12 +47,14 @@ def _merge_configs(config: dict[str, ConfigValue]) -> dict[str, ConfigValue]:
     service_configs = config["service_config"]
     assert isinstance(service_configs, dict)
     for key in service_configs:
-        merged[key] = _merge_service_config(glo, service_configs[key])
+        service_config = service_configs[key]
+        assert isinstance(service_config, dict)
+        merged[key] = _merge_service_config(glo, service_config)
 
     return dict(config, **{"service_config": merged})
 
 
-def _merge_service_config(conf1: dict[str, ConfigValue], conf2: dict[str, ConfigValue]) -> dict[str, ConfigValue]:
+def _merge_service_config(conf1: ConfigValue, conf2: ConfigValue) -> ConfigValue:
     ret = conf1.copy()
     for k, v2 in conf2.items():
         v1 = ret.get(k)
@@ -67,7 +71,7 @@ def _merge_service_config(conf1: dict[str, ConfigValue], conf2: dict[str, Config
     return ret
 
 
-def _default_config() -> dict[str, ConfigValue]:
+def _default_config() -> ConfigValue:
     return {
         "alarm_config": {
             "alarm_name_prefix": "cw-metric-alarm-autogen-",
@@ -78,7 +82,7 @@ def _default_config() -> dict[str, ConfigValue]:
     }
 
 
-def _json_schema() -> dict[str, ConfigValue]:
+def _json_schema() -> ConfigValue:
     return {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "title": "aws_create_alarm config schema",
