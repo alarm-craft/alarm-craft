@@ -1,0 +1,26 @@
+[flake8]
+exclude = ".git,__pycache__,docs/source/conf.py,.venv,old,build,dist,.aws-sam"
+max-line-length = 120
+max-complexity = 20
+
+# ignore errors
+ignore = 
+    # W503: line break before binary operator
+    W503,
+    # D100: Missing docstring in public module
+    D100,
+    # D104: Missing docstring in public package
+    D104,
+    # D400: First line should end with a period
+    D400,
+    # D401: First line should be imperative
+    D401,
+    # D415: First line should end with a period, question mark, or exclamation point
+    D415,
+    # NIP*: (flake8-nitpick plugin check results.) It checks *.py(like setup.py) in the root dir but there's nothing.
+    NIP
+
+#ignore = "W503,D100,D104,D400,D401,D415,NIP"
+
+# docstrings convention
+convention = "google"

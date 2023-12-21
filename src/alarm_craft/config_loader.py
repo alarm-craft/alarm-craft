@@ -7,6 +7,7 @@ ConfigElement = Union[str, int, bool, "ConfigList", "ConfigValue"]
 ConfigList = List[ConfigElement]
 ConfigValue = Dict[str, ConfigElement]
 
+
 def load(file_path: Optional[str]) -> ConfigValue:
     """Loads configuration from specified file path
 
