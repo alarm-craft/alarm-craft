@@ -3,11 +3,6 @@ url = "https://pypi.org/simple"
 verify_ssl = true
 name = "pypi"
 
-[packages]
-boto3 = "==1.34.3"
-botocore = "==1.34.3"
-jsonschema = "==4.20.0"
-
 [dev-packages]
 boto3-stubs = {extras = ["resourcegroupstaggingapi", "apigateway", "cloudwatch"], version = "==1.34.3"}
 types-jsonschema = "==4.20.0.0"
@@ -35,5 +30,6 @@ lint = "flake8 --show-source ."
 mypy = "mypy ."
 test = "pytest --cov=. --cov-branch --cov-report=xml"
 build = "python -m build"
+alarm-craft = "python -m alarm_craft.cli"
 uploadtest = "python -m twine upload --repository testpypi dist/*"
 upload = "python -m twine upload dist/*"

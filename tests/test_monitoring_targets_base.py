@@ -105,7 +105,7 @@ def test_base_provider_call_api(mocker: MockerFixture, resource_type: str, resou
     mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
-    config = _config(resource_type_filter=resource_type, target_resource_tags=resource_tags)
+    config = _config(target_resource_type=resource_type, target_resource_tags=resource_tags)
 
     mock_get_resources.return_value = {"ResourceTagMappingList": []}
 
@@ -134,7 +134,7 @@ def test_base_provider_with_resource_name_pattern(mocker: MockerFixture):
     config = _config(
         alarm_name_prefix=alarm_name_prefix, alarm_namespace=alarm_namespace, alarm_metrics=[alarm_metric_name]
     )
-    config["service_config"]["myservice"]["target_resource_name_pattern"] = pattern
+    config["resources"]["myservice"]["target_resource_name_pattern"] = pattern
 
     resource_name1 = "test-red-dog-0001"
     resource_name2 = "test-blue-cat-0002"  # this is only the one match the pattern
@@ -197,11 +197,11 @@ def test_base_provider_optional_config_key(mocker: MockerFixture):
     mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
-    resource_type_filter = "type1"
+    target_resource_type = "type1"
     config = {
-        "service_config": {
+        "resources": {
             "test": {
-                "resource_type_filter": resource_type_filter,
+                "target_resource_type": target_resource_type,
             },
         },
     }
@@ -211,7 +211,7 @@ def test_base_provider_optional_config_key(mocker: MockerFixture):
     target = MyTestMetricsProvider(config, "test")
     assert len(list(target.get_metric_alarms())) == 0
 
-    mock_get_resources.assert_called_once_with(PaginationToken="", ResourceTypeFilters=[resource_type_filter])
+    mock_get_resources.assert_called_once_with(PaginationToken="", ResourceTypeFilters=[target_resource_type])
 
 
 def test_param_overrides(mocker: MockerFixture):
@@ -245,7 +245,7 @@ def test_param_overrides(mocker: MockerFixture):
             "ComparisonOperator": "GreaterThanUpperThreshold",
         },
     }
-    config["service_config"]["myservice"]["alarm_param_overrides"] = overrides
+    config["resources"]["myservice"]["alarm"]["alarm_param_overrides"] = overrides
 
     mock_get_resources.return_value = {
         "ResourceTagMappingList": [
@@ -324,23 +324,27 @@ def test_api_pagenation(mocker: MockerFixture):
 
 def _config(
     alarm_name_prefix: str = "",
-    resource_type_filter: str = "",
+    target_resource_type: str = "",
     target_resource_tags: dict[str, str] = {},
     alarm_namespace: str = "AWS/MyService",
     alarm_metrics: list[str] = ["NumOfTestFailures"],
 ):
     return {
-        "alarm_config": {
-            "alarm_name_prefix": alarm_name_prefix,
-            "alarm_actions": [],
-            "default_alarm_params": {},
+        "globals": {
+            "alarm": {
+                "alarm_name_prefix": alarm_name_prefix,
+                "alarm_actions": [],
+                "default_alarm_params": {},
+            },
         },
-        "service_config": {
+        "resources": {
             "myservice": {
-                "resource_type_filter": resource_type_filter,
+                "target_resource_type": target_resource_type,
                 "target_resource_tags": target_resource_tags,
-                "namespace": alarm_namespace,
-                "metrics": alarm_metrics,
+                "alarm": {
+                    "namespace": alarm_namespace,
+                    "metrics": alarm_metrics,
+                },
             },
         },
     }

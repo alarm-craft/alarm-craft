@@ -17,7 +17,7 @@ def run() -> None:
     argparser.add_argument(
         "-n", "--notification-topic-arn", type=str, dest="notification_topic_arn", nargs="*", default=[]
     )
-    argparser.add_argument("-c", "--config-file")
+    argparser.add_argument("-c", "--config-file", required=True)
     argparser.add_argument("-u", "--update-existing-alarms", action="store_true", dest="update_existing_alarms")
     args = argparser.parse_args(namespace=opts)
 

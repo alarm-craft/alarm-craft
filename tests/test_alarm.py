@@ -126,31 +126,37 @@ def _alarm_test_default_alarm_param():
         (
             {
                 "Statistic": "Average",
+                "Period": 95,
                 "EvaluationPeriods": 95,
+                "Threshold": 2,
                 "ComparisonOperator": "GreaterThanThreshold",
+                "TreatMissingData": "breaching",
             },
             {
                 "Statistic": "Average",
-                "Period": 60,
+                "Period": 95,
                 "EvaluationPeriods": 95,
-                "Threshold": 1,
+                "Threshold": 2,
                 "ComparisonOperator": "GreaterThanThreshold",
-                "TreatMissingData": "notBreaching",
+                "TreatMissingData": "breaching",
             },
         ),
         (
             {
-                "Period": 78,
-                "Threshold": 9,
-                "TreatMissingData": "ignore",
+                "Statistic": "Maximum",
+                "Period": 123,
+                "EvaluationPeriods": 4,
+                "Threshold": 1024,
+                "ComparisonOperator": "LessThanOrEqualToThreshold",
+                "TreatMissingData": "missing",
             },
             {
-                "Statistic": "Sum",
-                "Period": 78,
-                "EvaluationPeriods": 1,
-                "Threshold": 9,
-                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
-                "TreatMissingData": "ignore",
+                "Statistic": "Maximum",
+                "Period": 123,
+                "EvaluationPeriods": 4,
+                "Threshold": 1024,
+                "ComparisonOperator": "LessThanOrEqualToThreshold",
+                "TreatMissingData": "missing",
             },
         ),
     ]
@@ -170,7 +176,7 @@ def test_default_alarm_params(
         expects (dict[str, Union[str, int]]): expected alarm properties
     """
     config = _config()
-    config["alarm_config"]["default_alarm_params"] = default_alarm_params
+    config["globals"]["alarm"]["default_alarm_params"] = default_alarm_params
 
     alarm_param = MetricAlarmParam(
         AlarmName="alarm-name-0001",
@@ -295,7 +301,7 @@ def test_create_alarm_with_tags(
         alarm_tag_expects (list[dict[str, str]]): expected tags of created alarm
     """
     config = _config()
-    config["alarm_config"]["alarm_tagging"] = tag_config
+    config["globals"]["alarm"]["alarm_tagging"] = tag_config
 
     handler = AlarmHandler(config)
 
@@ -326,7 +332,7 @@ def test_update_with_interval(cloudwatch_client: CloudWatchClient, interval: int
     """
     num_api_calls = 3
     config = _config()
-    config["alarm_config"]["api_call_intervals_in_millis"] = interval
+    config["globals"]["api_call_intervals_in_millis"] = interval
 
     handler = AlarmHandler(config)
 
@@ -364,7 +370,7 @@ def test_delete_with_interval(cloudwatch_client: CloudWatchClient, interval: int
     """
     num_api_calls = 3
     config = _config()
-    config["alarm_config"]["api_call_intervals_in_millis"] = interval
+    config["globals"]["api_call_intervals_in_millis"] = interval
 
     handler = AlarmHandler(config)
 
@@ -548,8 +554,19 @@ def test_describe_alarm_api_more_than_100(cloudwatch_client: CloudWatchClient):
 
 def _config(alarm_name_prefix: str = "", alarm_actions: list[str] = []):
     return {
-        "alarm_config": {
-            "alarm_name_prefix": alarm_name_prefix,
-            "alarm_actions": alarm_actions,
+        "globals": {
+            "alarm": {
+                "alarm_name_prefix": alarm_name_prefix,
+                "alarm_actions": alarm_actions,
+                "default_alarm_params": {  # default alarm params given from config_loader
+                    "Statistic": "Sum",
+                    "Period": 60,
+                    "EvaluationPeriods": 1,
+                    "Threshold": 1,
+                    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                    "TreatMissingData": "notBreaching",
+                },
+            },
+            "api_call_intervals_in_millis": 0,
         },
     }

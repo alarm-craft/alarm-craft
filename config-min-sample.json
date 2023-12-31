@@ -1,21 +1,13 @@
 {
-    "alarm_config": {
-        "alarm_name_prefix": "myproj-cw-metric-alarm-autogen-",
-        "alarm_actions": [],
-        "default_alarm_params": {}
-    },
-    "service_config": {
+    "resources": {
         "lambda": {
-            "provider_class_name": "LambdaMetricsProvider",
-            "resource_type_filter": "lambda:function",
-            "target_resource_tags": {
-                "division": "alpha"
-            },
-            "namespace": "AWS/Lambda",
-            "metrics": [
-                "Errors",
-                "Throttled"
-            ]
+            "target_resource_type": "lambda:function",
+            "alarm": {
+                "namespace": "AWS/Lambda",
+                "metrics": [
+                    "Errors"
+                ]
+            }
         }
     }
 }

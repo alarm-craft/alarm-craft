@@ -47,7 +47,7 @@ class AlarmHandler:
             tuple[Iterable[MetricAlarmParam], list[str], list[str]]: a tuple of alarms to create,
                                                                      alarms to keep and alarms to delete
         """
-        current_alarms = self._get_current_alarms(self.config["alarm_config"]["alarm_name_prefix"])
+        current_alarms = self._get_current_alarms(self.config["globals"]["alarm"]["alarm_name_prefix"])
         current_alarm_names = {alm["AlarmName"] for alm in current_alarms}
         required_alarm_names = {alm["AlarmName"] for alm in alarm_params}
 
@@ -89,20 +89,18 @@ class AlarmHandler:
         self._delete_alarms(to_delete)
 
     def _create_alarms(self, alarm_params: Iterable[MetricAlarmParam], additional_alarm_actions: list[str]) -> None:
-        common_param = AlarmHandler.DEFAULT_ALARM_CONF
-        # fail safety for missing default alarm params
-        default_alarm_param = self.config["alarm_config"].get("default_alarm_params")
-        if default_alarm_param:
-            common_param = common_param | default_alarm_param
+        common_param = self.config["globals"]["alarm"]["default_alarm_params"]
+        # if default_alarm_param:
+        #     common_param = common_param | default_alarm_param
 
         # alarm actions
-        alarm_notif_distinations = self.config["alarm_config"]["alarm_actions"] + additional_alarm_actions
+        alarm_notif_distinations = self.config["globals"]["alarm"]["alarm_actions"] + additional_alarm_actions
         common_param["AlarmActions"] = alarm_notif_distinations
         common_param["OKActions"] = alarm_notif_distinations
         common_param["InsufficientDataActions"] = alarm_notif_distinations
 
         # tagging
-        alarm_tagging = self.config["alarm_config"].get("alarm_tagging")
+        alarm_tagging = self.config["globals"]["alarm"].get("alarm_tagging")
         if alarm_tagging:
             common_param["Tags"] = [{"Key": k, "Value": v} for k, v in alarm_tagging.items()]
 
@@ -113,7 +111,7 @@ class AlarmHandler:
             alarm_param = common_param | alm
 
             logger.debug("creating alarm:%s", alarm_param)
-            resp = self.cloudwatch.put_metric_alarm(**alarm_param)  # type: ignore
+            resp = self.cloudwatch.put_metric_alarm(**alarm_param)
             respm = resp["ResponseMetadata"]
             logger.debug(
                 f"status={respm['HTTPStatusCode']}, {respm['HTTPHeaders']}, {respm['RetryAttempts']} retries made."
@@ -134,9 +132,6 @@ class AlarmHandler:
                 sleep(interval)
 
     def _get_interval_in_sec(self) -> float:
-        interval = self.config["alarm_config"].get("api_call_intervals_in_millis")
-        if interval is not None:
-            assert isinstance(interval, int)
-            return interval / 1000  # from milli-seconds to seconds
-        else:
-            return 0  # not specified
+        interval = self.config["globals"]["api_call_intervals_in_millis"]
+        assert isinstance(interval, int)
+        return interval / 1000  # from milli-seconds to seconds

@@ -1,23 +1,16 @@
 import pytest
 from pytest_mock import MockerFixture
 
-from alarm_craft.monitoring_targets import (
-    EventBridgeMetricsProvider,
-    LambdaMetricsProvider,
-    SfnMetricsProvider,
-    SnsMetricsProvider,
-    SqsMetricsProvider,
-    get_target_metrics,
-)
+from alarm_craft.monitoring_targets import get_target_metrics
 
 
 def _test_params(name1: str = "test1"):
-    provider_type = [
-        LambdaMetricsProvider,
-        SnsMetricsProvider,
-        SqsMetricsProvider,
-        SfnMetricsProvider,
-        EventBridgeMetricsProvider,
+    target_resource_type = [
+        "lambda:function",
+        "sns:topic",
+        "sqs:queue",
+        "states:stateMachine",
+        "events:rule",
     ]
     service_name = [
         "lambda",
@@ -54,11 +47,11 @@ def _test_params(name1: str = "test1"):
         [{"Name": "StateMachineArn", "Value": arn[index_for_sfn]}],
         [{"Name": "RuleName", "Value": name1}],
     ]
-    return zip(provider_type, service_name, arn, dimensions)
+    return zip(target_resource_type, service_name, arn, dimensions)
 
 
-@pytest.mark.parametrize("provider_type, service_name, arn, dimensions", _test_params())
-def test_inherit_metrics_provider(mocker: MockerFixture, provider_type, service_name, arn, dimensions):
+@pytest.mark.parametrize("target_resource_type, service_name, arn, dimensions", _test_params())
+def test_inherit_metrics_provider(mocker: MockerFixture, target_resource_type, service_name, arn, dimensions):
     """Test provider classes inherited from ResourceGroupsTaggingAPITargetMetricsProviderBase
 
     Args:
@@ -73,16 +66,20 @@ def test_inherit_metrics_provider(mocker: MockerFixture, provider_type, service_
 
     alarm_metric_name = "NumOfTestFailure"
     config = {
-        "alarm_config": {
-            "alarm_name_prefix": "",
-            "alarm_actions": [],
+        "globals": {
+            "alarm": {
+                "alarm_name_prefix": "",
+                "alarm_actions": [],
+            },
         },
-        "service_config": {
+        "resources": {
             service_name: {
-                "resource_type_filter": "",  # not used
+                "target_resource_type": target_resource_type,
                 "target_resource_name_pattern": "^test1$",
-                "namespace": "",  # not used
-                "metrics": [alarm_metric_name],
+                "alarm": {
+                    "namespace": "",  # not used
+                    "metrics": [alarm_metric_name],
+                },
             },
         },
     }
@@ -93,15 +90,16 @@ def test_inherit_metrics_provider(mocker: MockerFixture, provider_type, service_
         ]
     }
 
-    target = provider_type(config, service_name)
-    alarms = list(target.get_metric_alarms())
+    alarms = list(get_target_metrics(config))
     assert len(alarms) == 1
     assert alarms[0]["MetricName"] == alarm_metric_name
     assert alarms[0]["Dimensions"] == dimensions
 
 
-@pytest.mark.parametrize("provider_type, service_name, arn, dimensions", _test_params())
-def test_inherit_metrics_provider_no_match_pattern(mocker: MockerFixture, provider_type, service_name, arn, dimensions):
+@pytest.mark.parametrize("target_resource_type, service_name, arn, dimensions", _test_params())
+def test_inherit_metrics_provider_no_match_pattern(
+    mocker: MockerFixture, target_resource_type, service_name, arn, dimensions
+):
     """Test provider classes inherited from ResourceGroupsTaggingAPITargetMetricsProviderBase
 
     Args:
@@ -116,16 +114,20 @@ def test_inherit_metrics_provider_no_match_pattern(mocker: MockerFixture, provid
 
     alarm_metric_name = "NumOfTestFailure"
     config = {
-        "alarm_config": {
-            "alarm_name_prefix": "",
-            "alarm_actions": [],
+        "globals": {
+            "alarm": {
+                "alarm_name_prefix": "",
+                "alarm_actions": [],
+            },
         },
-        "service_config": {
+        "resources": {
             service_name: {
-                "resource_type_filter": "",  # not used
+                "target_resource_type": target_resource_type,
                 "target_resource_name_pattern": "test2",
-                "namespace": "",  # not used
-                "metrics": [alarm_metric_name],
+                "alarm": {
+                    "namespace": "",  # not used
+                    "metrics": [alarm_metric_name],
+                },
             },
         },
     }
@@ -136,8 +138,7 @@ def test_inherit_metrics_provider_no_match_pattern(mocker: MockerFixture, provid
         ]
     }
 
-    target = provider_type(config, service_name)
-    alarms = list(target.get_metric_alarms())
+    alarms = list(get_target_metrics(config))
     assert len(alarms) == 0
 
 
@@ -155,17 +156,17 @@ def test_get_target_metrics(mocker: MockerFixture):
     service_config = {}
     mock_result = {}
     expects: list[dict] = []
-    for (provider_type, service_name, arn, dimensions) in _test_params(resource_name):
-        resource_type_filter = service_name + ":" + "resource"
+    for target_resource_type, service_name, arn, dimensions in _test_params(resource_name):
         namespace = "AWS/" + service_name
         metric_name = "TestMetric"
         service_config[service_name] = {
-            "provider_class_name": provider_type.__name__,
-            "resource_type_filter": resource_type_filter,
-            "namespace": namespace,
-            "metrics": [metric_name],
+            "target_resource_type": target_resource_type,
+            "alarm": {
+                "namespace": namespace,
+                "metrics": [metric_name],
+            },
         }
-        mock_result[resource_type_filter] = [
+        mock_result[target_resource_type] = [
             {"ResourceARN": arn},
         ]
         expects.append(
@@ -187,11 +188,13 @@ def test_get_target_metrics(mocker: MockerFixture):
     mock_get_resources.side_effect = _mock_do_get_resources
 
     config = {
-        "alarm_config": {
-            "alarm_name_prefix": alarm_prefix,
-            "alarm_actions": [],
+        "globals": {
+            "alarm": {
+                "alarm_name_prefix": alarm_prefix,
+                "alarm_actions": [],
+            },
         },
-        "service_config": service_config,
+        "resources": service_config,
     }
 
     alarm_params = list(get_target_metrics(config))

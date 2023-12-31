@@ -3,6 +3,8 @@ from typing import Dict, List, Optional, Union
 
 import jsonschema
 
+from . import config_schema
+
 ConfigElement = Union[str, int, bool, "ConfigList", "ConfigValue"]
 ConfigList = List[ConfigElement]
 ConfigValue = Dict[str, ConfigElement]
@@ -17,50 +19,64 @@ def load(file_path: Optional[str]) -> ConfigValue:
     Returns:
         ConfigValue: config dict
     """
-    if file_path:
-        with open(file_path, "r") as f:
-            config = json.load(f)
-        jsonschema.validate(config, _json_schema())
-    else:
-        config = _default_config()
+    with open(file_path, "r") as f:
+        config = json.load(f)
+    jsonschema.validate(config, config_schema.get_schema())
 
     return _merge_configs(config)
 
 
-def save_default_config(file_name: str = "config.json") -> None:
-    """Save default config to file
-
-    Args:
-        file_name (str, optional): file to save. Defaults to "config.json".
-    """
-    with open(file_name, "w") as file:
-        json.dump(_default_config(), file)
-
-
 def _merge_configs(config: ConfigValue) -> ConfigValue:
+    default_glo = default_global_config()
     glo = config.get("globals")
-    if not glo:
-        return config
+    if glo:
+        assert isinstance(glo, dict)
+        glo = _merge_dicts(default_glo, glo)
+    else:
+        glo = default_glo
 
-    assert isinstance(glo, dict)
     merged = {}
-    service_configs = config["service_config"]
-    assert isinstance(service_configs, dict)
-    for key in service_configs:
-        service_config = service_configs[key]
-        assert isinstance(service_config, dict)
-        merged[key] = _merge_service_config(glo, service_config)
+    glo_resource_filter = glo["resource_filter"]
+    resources = config["resources"]
+    for key in resources:  # type: ignore
+        resource_config = _merge_dicts(glo_resource_filter, resources[key])  # type: ignore
 
-    return dict(config, **{"service_config": merged})
+        merged[key] = resource_config
+
+    return dict(config, **{"globals": glo, "resources": merged})
 
 
-def _merge_service_config(conf1: ConfigValue, conf2: ConfigValue) -> ConfigValue:
+def default_global_config() -> ConfigValue:
+    """Gets default configuration of `global` key
+
+    Returns:
+        ConfigValue: default global config dict
+    """
+    return {
+        "alarm": {
+            "alarm_name_prefix": "alarm-craft-autogen-",
+            "alarm_actions": [],
+            "default_alarm_params": {
+                "Statistic": "Sum",
+                "Period": 60,
+                "EvaluationPeriods": 1,
+                "Threshold": 1,
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+                "TreatMissingData": "notBreaching",
+            },
+        },
+        "resource_filter": {},
+        "api_call_intervals_in_millis": 334,
+    }
+
+
+def _merge_dicts(conf1: dict, conf2: dict) -> ConfigValue:
     ret = conf1.copy()
     for k, v2 in conf2.items():
         v1 = ret.get(k)
         if v1:
             if isinstance(v1, dict) and isinstance(v2, dict):
-                ret[k] = _merge_service_config(v1, v2)
+                ret[k] = _merge_dicts(v1, v2)
             elif isinstance(v1, list) and isinstance(v2, list):
                 ret[k] = v1 + v2
             else:
@@ -69,117 +85,3 @@ def _merge_service_config(conf1: ConfigValue, conf2: ConfigValue) -> ConfigValue
             ret[k] = v2
 
     return ret
-
-
-def _default_config() -> ConfigValue:
-    return {
-        "alarm_config": {
-            "alarm_name_prefix": "cw-metric-alarm-autogen-",
-            "alarm_actions": [],
-            "default_alarm_params": {},
-        },
-        "service_config": {},
-    }
-
-
-def _json_schema() -> ConfigValue:
-    return {
-        "$schema": "http://json-schema.org/draft-07/schema#",
-        "title": "aws_create_alarm config schema",
-        "description": "json validation",
-        "type": "object",
-        "properties": {
-            "alarm_config": {
-                "type": "object",
-                "properties": {
-                    "alarm_name_prefix": {"type": "string"},
-                    "alarm_actions": {"type": "array", "items": {"type": "string"}},
-                    "default_alarm_params": {"$ref": "#/definitions/alarm_params"},
-                    "alarm_tagging": {"$ref": "#/definitions/tags"},
-                    "api_call_intervals_in_millis": {"type": "integer"},
-                },
-                "required": [
-                    "alarm_name_prefix",
-                    "alarm_actions",
-                    "default_alarm_params",
-                ],
-                "additionalProperties": False,
-            },
-            "globals": {
-                "type": "object",
-                "properties": {
-                    "target_resource_name_pattern": {"type": "string"},
-                    "target_resource_tags": {"$ref": "#/definitions/tags"},
-                },
-                "additionalProperties": False,
-            },
-            "service_config": {
-                "type": "object",
-                "patternProperties": {"^[\\-0-9A-Za-z]*$": {"$ref": "#/definitions/service_config"}},
-                "additionalProperties": False,
-            },
-        },
-        "required": [
-            "alarm_config",
-            "service_config",
-        ],
-        "additionalProperties": False,
-        "definitions": {
-            "service_config": {
-                "type": "object",
-                "properties": {
-                    "provider_class_name": {"type": "string"},
-                    "resource_type_filter": {"type": "string"},
-                    "target_resource_name_pattern": {"type": "string"},
-                    "target_resource_tags": {"$ref": "#/definitions/tags"},
-                    "namespace": {"type": "string"},
-                    "metrics": {
-                        "type": "array",
-                        "items": {"type": "string"},
-                        "minItems": 1,
-                    },
-                    "alarm_param_overrides": {
-                        "type": "object",
-                        "patternProperties": {"^[0-9A-Za-z]*$": {"$ref": "#/definitions/alarm_params"}},
-                        "additionalProperties": False,
-                    },
-                },
-                "required": [
-                    "provider_class_name",
-                    "resource_type_filter",
-                    "namespace",
-                    "metrics",
-                ],
-                "additionalProperties": False,
-            },
-            "alarm_params": {
-                "type": "object",
-                "properties": {
-                    "Statistic": {"type": "string"},
-                    "Period": {"type": "integer"},
-                    "EvaluationPeriods": {"type": "integer"},
-                    "Threshold": {"type": "integer"},
-                    "ComparisonOperator": {
-                        "type": "string",
-                        "enum": [
-                            "GreaterThanOrEqualToThreshold",
-                            "GreaterThanThreshold",
-                            "GreaterThanUpperThreshold",
-                            "LessThanLowerOrGreaterThanUpperThreshold",
-                            "LessThanLowerThreshold",
-                            "LessThanOrEqualToThreshold",
-                            "LessThanThreshold",
-                        ],
-                    },
-                    "TreatMissingData": {"type": "string"},
-                },
-                "additionalProperties": False,
-            },
-            "tags": {
-                "type": "object",
-                "patternProperties": {"^[0-9A-Za-z.:+=@_/-]*$": {"type": "string"}},
-                "minProperties": 1,
-                "additionalProperties": False,
-            },
-        },
-    }

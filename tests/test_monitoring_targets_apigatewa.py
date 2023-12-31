@@ -134,7 +134,7 @@ def test_apigateway_provider_through_get_target_metrics():
     """Test for ApiGatewayMetricsProvider through get_target_metrics()"""
     from alarm_craft.monitoring_targets import get_target_metrics
 
-    config = _config(alarm_metrics=["MyMetric"])
+    config = _config(target_resource_type="apigateway:restapi", alarm_metrics=["MyMetric"])
     alarm_params = list(get_target_metrics(config))
 
     expects = [
@@ -148,24 +148,27 @@ def test_apigateway_provider_through_get_target_metrics():
 
 def _config(
     alarm_name_prefix: str = "",
-    resource_type_filter: str = "",
+    target_resource_type: str = "",
     target_resource_tags: dict[str, str] = {},
     alarm_namespace: str = "AWS/MyService",
     alarm_metrics: list[str] = ["NumOfTestFailures"],
 ):
     return {
-        "alarm_config": {
-            "alarm_name_prefix": alarm_name_prefix,
-            "alarm_actions": [],
-            "default_alarm_params": {},
+        "globals": {
+            "alarm": {
+                "alarm_name_prefix": alarm_name_prefix,
+                "alarm_actions": [],
+                "default_alarm_params": {},
+            },
         },
-        "service_config": {
+        "resources": {
             "apigateway": {
-                "provider_class_name": "ApiGatewayMetricsProvider",
-                "resource_type_filter": resource_type_filter,
+                "target_resource_type": target_resource_type,
                 "target_resource_tags": target_resource_tags,
-                "namespace": alarm_namespace,
-                "metrics": alarm_metrics,
+                "alarm": {
+                    "namespace": alarm_namespace,
+                    "metrics": alarm_metrics,
+                },
             },
         },
     }
