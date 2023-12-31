@@ -67,16 +67,22 @@ class TargetMetricsProvider(Protocol):
 
 
 def _get_target_metrics_providers(config: dict[str, Any]) -> Iterable[TargetMetricsProvider]:
-    for service_name, service_conf in config["service_config"].items():
-        provider_class = service_conf["provider_class_name"]
-
-        # calling provider class dynamically at runtime
-        # this effects like below code
-        #  ex)
-        #   LambdaMetricsProvider(config, "lambda")
-        provider: TargetMetricsProvider = eval(f"""{provider_class}(config, "{service_name}")""")
-
-        yield provider
+    for resource_config_name, resource_conf in config["resources"].items():
+        resource_type = resource_conf["target_resource_type"]
+        if resource_type == "lambda:function":
+            yield LambdaMetricsProvider(config, resource_config_name)
+        elif resource_type == "states:stateMachine":
+            yield SfnMetricsProvider(config, resource_config_name)
+        elif resource_type == "apigateway:restapi":
+            yield ApiGatewayMetricsProvider(config, resource_config_name)
+        elif resource_type == "sns:topic":
+            yield SnsMetricsProvider(config, resource_config_name)
+        elif resource_type == "sqs:queue":
+            yield SqsMetricsProvider(config, resource_config_name)
+        elif resource_type == "events:rule":
+            yield EventBridgeMetricsProvider(config, resource_config_name)
+        else:
+            raise ValueError(f"no such resource type: ${resource_type}")
 
 
 T = TypeVar("T")
@@ -98,7 +104,7 @@ class TargetMetricsProviderBase(ABC, Generic[T]):
             service_name (str): service name, key of the service config
         """
         self.config = config
-        self.service_config = config["service_config"][service_name]
+        self.resource_config = config["resources"][service_name]
 
     def get_metric_alarms(self) -> Iterable[MetricAlarmParam]:
         """Gets metric alarms
@@ -142,7 +148,7 @@ class TargetMetricsProviderBase(ABC, Generic[T]):
             str: alarm name
         """
         name = self.get_resource_name(resource)
-        return f"{self.config['alarm_config']['alarm_name_prefix']}{name}-{metric_name}"
+        return f"{self.config['globals']['alarm']['alarm_name_prefix']}{name}-{metric_name}"
 
     def description(self, metric_name: str, resource: T) -> str:
         """Gets alarm description
@@ -163,7 +169,7 @@ class TargetMetricsProviderBase(ABC, Generic[T]):
         Returns:
             str: alarm namespace
         """
-        return str(self.service_config["namespace"])
+        return str(self.resource_config["alarm"]["namespace"])
 
     def metric_names(self, resource: T) -> list[str]:
         """Gets metric names
@@ -174,7 +180,7 @@ class TargetMetricsProviderBase(ABC, Generic[T]):
         Returns:
             list[str]: list of metric names
         """
-        metrics = self.service_config["metrics"]
+        metrics = self.resource_config["alarm"]["metrics"]
         assert isinstance(metrics, list), "metrics: value must be a list"
         return metrics
 
@@ -201,7 +207,7 @@ class TargetMetricsProviderBase(ABC, Generic[T]):
         Returns:
             Mapping[str, Any]: alarm param overrides
         """
-        param_overrides = self.service_config.get("alarm_param_overrides")
+        param_overrides = self.resource_config["alarm"].get("alarm_param_overrides")
         if param_overrides:
             assert isinstance(param_overrides, dict)
             params = param_overrides.get(metric_name)
@@ -239,9 +245,9 @@ class ResourceGroupsTaggingAPITargetMetricsProviderBase(TargetMetricsProviderBas
         """
         resource_client = boto3.client("resourcegroupstaggingapi")
         try:
-            tags = self.service_config.get("target_resource_tags")
-            pattern = self.service_config.get("target_resource_name_pattern")
-            resource_type = self.service_config["resource_type_filter"]
+            tags = self.resource_config.get("target_resource_tags")
+            pattern = self.resource_config.get("target_resource_name_pattern")
+            resource_type = self.resource_config["target_resource_type"]
             request_param: dict = {
                 "ResourceTypeFilters": [resource_type],
                 "PaginationToken": "",
@@ -424,7 +430,7 @@ class ApiGatewayMetricsProvider(TargetMetricsProviderBase[str]):
         Returns:
             Iterable[str]: monitoring target resources
         """
-        target_tags = self.service_config.get("target_resource_tags")
+        target_tags = self.resource_config.get("target_resource_tags")
 
         client = boto3.client("apigateway")
         try:

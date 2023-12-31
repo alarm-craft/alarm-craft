@@ -1,0 +1,186 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "title": "Schema definition of `alarm-craft` config file",
+    "type": "object",
+    "properties": {
+        "globals": {
+            "type": "object",
+            "description": "global configs applied for the target resources",
+            "properties": {
+                "alarm": {
+                    "type": "object",
+                    "description": "global alarm configs",
+                    "properties": {
+                        "alarm_name_prefix": {
+                            "type": "string",
+                            "description": "prefix of alarms created by the alarm-craft",
+                            "default": "alarm-craft-autogen-"
+                        },
+                        "alarm_actions": {
+                            "type": "array",
+                            "description": "List of SNS Topic ARN to set to [OKActions](https://docs.aws.amazon.com/ja_jp/AWSCloudFormation/latest/UserGuide/aws-resource-cloudwatch-alarm.html#cfn-cloudwatch-alarms-okactions), [AlarmActions](https://docs.aws.amazon.com/ja_jp/AWSCloudFormation/latest/UserGuide/aws-resource-cloudwatch-alarm.html#cfn-cloudwatch-alarms-alarmactions), [InsufficientDataActions](https://docs.aws.amazon.com/ja_jp/AWSCloudFormation/latest/UserGuide/aws-resource-cloudwatch-alarm.html#cfn-cloudwatch-alarms-insufficientdataactions)",
+                            "items": {
+                                "type": "string"
+                            }
+                        },
+                        "default_alarm_params": {
+                            "$ref": "#/definitions/alarm_params",
+                            "description": "default alarm parameters"
+                        },
+                        "alarm_tagging": {
+                            "$ref": "#/definitions/tags",
+                            "description": "tags added to alarms created by the alarm-craft"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "resource_filter": {
+                    "type": "object",
+                    "properties": {
+                        "target_resource_name_pattern": {
+                            "type": "string",
+                            "description": "regular expression to filter by the name of resources"
+                        },
+                        "target_resource_tags": {
+                            "$ref": "#/definitions/tags",
+                            "description": "tag(s) to filter the resources. giving two or more tags requires having all specified tags"
+                        }
+                    },
+                    "additionalProperties": false
+                },
+                "api_call_intervals_in_millis": {
+                    "type": "integer",
+                    "description": "interval to call the CloudWatch Service APIs. the maximum number of requests are restricted 9TPS for DescribeAlarms and 3TPS for PutMetricAlarm/DeleteAlarms by [Service Quota](https://docs.aws.amazon.com/ja_jp/AmazonCloudWatch/latest/monitoring/cloudwatch_limits.html)",
+                    "default": "334 (ms)"
+                }
+            },
+            "additionalProperties": false
+        },
+        "resources": {
+            "type": "object",
+            "description": "configs for target resources and its alarms",
+            "patternProperties": {
+                "^[\\-0-9A-Za-z]*$": {
+                    "$ref": "#/definitions/resource_config",
+                    "description": "individual config for target resources and its alarms"
+                }
+            },
+            "additionalProperties": false,
+            "minProperties": 1
+        }
+    },
+    "required": [
+        "resources"
+    ],
+    "additionalProperties": false,
+    "definitions": {
+        "resource_config": {
+            "type": "object",
+            "description": "configs for target resource",
+            "properties": {
+                "target_resource_type": {
+                    "type": "string",
+                    "description": "type of target resource",
+                    "enum": [
+                        "lambda:function",
+                        "states:stateMachine",
+                        "apigateway:restapi",
+                        "sns:topic",
+                        "sqs:queue",
+                        "events:rule"
+                    ]
+                },
+                "target_resource_name_pattern": {
+                    "type": "string",
+                    "description": "regular expression to filter by the name of resources. global config will be overridden"
+                },
+                "target_resource_tags": {
+                    "$ref": "#/definitions/tags",
+                    "description": "tag(s) to filter the resources. giving two or more tags requires having all specified tags. global config will be overridden"
+                },
+                "alarm": {
+                    "type": "object",
+                    "properties": {
+                        "namespace": {
+                            "type": "string",
+                            "description": "namespace of the metric. refer [Metrics published by AWS Services](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/aws-services-cloudwatch-metrics.html)"
+                        },
+                        "metrics": {
+                            "type": "array",
+                            "description": "name of the metric. refer [Metrics published by AWS Services](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/aws-services-cloudwatch-metrics.html)",
+                            "items": {
+                                "type": "string"
+                            },
+                            "minItems": 1
+                        },
+                        "alarm_param_overrides": {
+                            "type": "object",
+                            "description": "alarm params for metric. specify the metrics name as a key",
+                            "patternProperties": {
+                                "^[0-9A-Za-z]*$": {
+                                    "$ref": "#/definitions/alarm_params"
+                                }
+                            },
+                            "additionalProperties": false
+                        }
+                    },
+                    "required": [
+                        "namespace",
+                        "metrics"
+                    ],
+                    "additionalProperties": false
+                }
+            },
+            "required": [
+                "target_resource_type",
+                "alarm"
+            ],
+            "additionalProperties": false
+        },
+        "alarm_params": {
+            "type": "object",
+            "description": "alarm parameters. refer to [params of AWS::CloudWatch::Alarm](https://docs.aws.amazon.com/AWSCloudFormation/latest/UserGuide/aws-resource-cloudwatch-alarm.html#aws-resource-cloudwatch-alarm-properties)",
+            "properties": {
+                "Statistic": {
+                    "type": "string"
+                },
+                "Period": {
+                    "type": "integer"
+                },
+                "EvaluationPeriods": {
+                    "type": "integer"
+                },
+                "Threshold": {
+                    "type": "integer"
+                },
+                "ComparisonOperator": {
+                    "type": "string",
+                    "enum": [
+                        "GreaterThanOrEqualToThreshold",
+                        "GreaterThanThreshold",
+                        "GreaterThanUpperThreshold",
+                        "LessThanLowerOrGreaterThanUpperThreshold",
+                        "LessThanLowerThreshold",
+                        "LessThanOrEqualToThreshold",
+                        "LessThanThreshold"
+                    ]
+                },
+                "TreatMissingData": {
+                    "type": "string"
+                }
+            },
+            "additionalProperties": false
+        },
+        "tags": {
+            "type": "object",
+            "patternProperties": {
+                "^[0-9A-Za-z.:+=@_/-]*$": {
+                    "type": "string",
+                    "description": "tag key. refer [Tag naming convensions](https://docs.aws.amazon.com/tag-editor/latest/userguide/tagging.html#tag-conventions)"
+                }
+            },
+            "minProperties": 1,
+            "additionalProperties": false
+        }
+    }
+}

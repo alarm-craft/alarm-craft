@@ -60,14 +60,7 @@ def test_end_to_end_exec(
 
     # create config
     config_path = tmp_path / "config.json"
-    conf = {
-        "alarm_config": {
-            "alarm_name_prefix": "alarm-test-",
-            "alarm_actions": [],
-            "default_alarm_params": {},
-        },
-        "service_config": {},
-    }
+    conf = _config()
     with open(config_path, "w") as f:
         json.dump(conf, f)
 
@@ -147,14 +140,7 @@ def test_end_to_end_confirm(
 
     # create config
     config_path = tmp_path / "config.json"
-    conf = {
-        "alarm_config": {
-            "alarm_name_prefix": alarm_name_prefix,
-            "alarm_actions": [],
-            "default_alarm_params": {},
-        },
-        "service_config": {},
-    }
+    conf = _config(alarm_name_prefix)
     with open(config_path, "w") as f:
         json.dump(conf, f)
 
@@ -235,14 +221,7 @@ def test_end_to_end_no_updates(
 
     # create config
     config_path = tmp_path / "config.json"
-    conf = {
-        "alarm_config": {
-            "alarm_name_prefix": alarm_name_prefix,
-            "alarm_actions": [],
-            "default_alarm_params": {},
-        },
-        "service_config": {},
-    }
+    conf = _config(alarm_name_prefix)
     with open(config_path, "w") as f:
         json.dump(conf, f)
 
@@ -308,14 +287,7 @@ def test_end_to_end_update_existing(
     # create config
     alarm_topic_arn = "arn:aws:sns:ap-northeast-1:123456789012:alarming0001"
     config_path = tmp_path / "config.json"
-    conf = {
-        "alarm_config": {
-            "alarm_name_prefix": alarm_name_prefix,
-            "alarm_actions": [alarm_topic_arn],
-            "default_alarm_params": {},
-        },
-        "service_config": {},
-    }
+    conf = _config(alarm_name_prefix, [alarm_topic_arn])
     with open(config_path, "w") as f:
         json.dump(conf, f)
 
@@ -356,3 +328,26 @@ def test_end_to_end_update_existing(
         assert f"+ {alarm_name_prefix}{i}" in out
     for i in range(50, 100):
         assert f"U {alarm_name_prefix}{i}" in out
+
+
+def _config(alarm_name_prefix: str = "alarm-test-", alarm_actions: list[str] = None) -> dict:
+    conf = {
+        "globals": {
+            "alarm": {
+                "alarm_name_prefix": alarm_name_prefix,
+            },
+        },
+        "resources": {
+            "dummy": {
+                "target_resource_type": "lambda:function",
+                "alarm": {
+                    "namespace": "dummy",
+                    "metrics": ["dummy"],
+                },
+            },
+        },
+    }
+    if alarm_actions:
+        conf["globals"]["alarm"]["alarm_actions"] = alarm_actions  # type: ignore
+
+    return conf
