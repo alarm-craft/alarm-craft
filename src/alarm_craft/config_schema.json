@@ -96,7 +96,7 @@
                 },
                 "target_resource_tags": {
                     "$ref": "#/definitions/tags",
-                    "description": "tag(s) to filter the resources. giving two or more tags requires having all specified tags. global config will be overridden"
+                    "description": "tag(s) to filter the resources. giving two or more tags requires having all specified tags. global config will be merged"
                 },
                 "alarm": {
                     "type": "object",
