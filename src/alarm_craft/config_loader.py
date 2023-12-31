@@ -19,13 +19,9 @@ def load(file_path: Optional[str]) -> ConfigValue:
     Returns:
         ConfigValue: config dict
     """
-    if file_path:
-        with open(file_path, "r") as f:
-            config = json.load(f)
-        jsonschema.validate(config, config_schema.get_schema())
-    else:
-        # todo: consider how to handle this case
-        raise ValueError("")
+    with open(file_path, "r") as f:
+        config = json.load(f)
+    jsonschema.validate(config, config_schema.get_schema())
 
     return _merge_configs(config)
 
