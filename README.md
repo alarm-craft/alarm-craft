@@ -1,6 +1,20 @@
 # AWS CloudWatch Alarm Craft
 
-A tool to create AWS CloudWatch Alarms for your resources with specified name and tags.
+[![Python - Version](https://img.shields.io/badge/Python-3.9%2B-3776AB.svg?logo=python&style=flat)](https://www.python.org/downloads/)
+[![PyPI - Version](https://img.shields.io/pypi/v/alarm-craft)](https://pypi.org/project/alarm-craft/)
+[![PyPI - License](https://img.shields.io/pypi/l/alarm-craft)](https://pypi.org/project/alarm-craft/)
+![aws](https://img.shields.io/badge/-Amazon%20Web%20Services-232F3E.svg?logo=amazon-aws&style=flat)
+
+---
+
+In modern architectures such as serverless and microservices, the number of cloud-managed resources tends to grow, making monitoring a challenging task. `alarm-craft` is a tool designed to address this issue.
+
+## Features
+
+- **Bulk Generation**: Generates the necessary monitoring alarms in bulk with a single command.
+- **Declarative Config**: Provides a [declarative config](https://github.com/ryo-murai/alarm-craft/wiki/Configuration) to specify monitoring targets using resource names or tags.
+- **Flexible Condition Definition**: Allows flexible definition of alarm conditions, including metrics and thresholds.
+- **Integration with Your Deployment Pipeline**: A CLI tool written in Python that [integrates](https://github.com/ryo-murai/alarm-craft/wiki/Automation) seamlessly into your deployment pipeline.
 
 ## Quick Start
 
@@ -8,7 +22,7 @@ A tool to create AWS CloudWatch Alarms for your resources with specified name an
    ```bash
    pip install alarm-craft
    ```
-1. Create a json file like below and save it `config.json`
+1. Create a json file like below and save it as `config.json`
    ```json
    {
      "resources": {
@@ -23,39 +37,11 @@ A tool to create AWS CloudWatch Alarms for your resources with specified name an
    }
    ```
 1. Execute the tool.
-   `bash
- python alarm-craft -c config.json
- `
-   By this execution, the `alarm-craft` creates Cloudwatch Alarms to detect `Error` for your Lambda functions.
+   ```bash
+   alarm-craft -c config.json
+   ```
+   By this execution, the `alarm-craft` creates Cloudwatch Alarms to detect `Errors` in all Lambda functions.
 
-### Supported resources
+## Documentation
 
-The following resources are supported by the `alarm-craft`.
-
-- Lambda Function
-- StepFunctions State Machine
-- APIGateway REST API
-- SNS Topic
-- SQS Queue
-- EventBridge Rule
-
-### Filtering resources
-
-- The alarming target can be filtered by name and/or tags.
-  ```json
-     "lambda": {
-          "target_resource_name_pattern": "^myproj-(dev|prod)-",
-          "target_resource_tags": {
-              "Owner": "mydivision"
-          },
-          ... (omit)
-     }
-  ```
-
-### Configure more
-
-See [config-min-sample.json](config-min-sample.json) for above simple case or [config-sample.json](config-sample.json) for more complex case. For complete configuration specification, refer [Wiki/Configuration](https://github.com/ryo-murai/alarm-craft/wiki/Configuration).
-
-## Usage
-
-See [Wiki](https://github.com/ryo-murai/alarm-craft/wiki).
+For detailed instructions and information on configuring the tool, refer to the [Wiki](https://github.com/ryo-murai/alarm-craft/wiki).
