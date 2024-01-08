@@ -7,14 +7,15 @@
 
 ---
 
-In modern architectures such as serverless and microservices, the number of cloud-managed resources tends to grow, making monitoring a challenging task. `alarm-craft` is a tool designed to address this issue.
+With modern architectures such as serverless and microservices, the number of resources managed in the cloud tends to increase, making monitoring a challenging task. `alarm-craft` is a tool designed to address this problem.
 
 ## Features
 
 - **Bulk Generation**: Generates the necessary monitoring alarms in bulk with a single command.
-- **Declarative Config**: Provides a [declarative config](https://github.com/ryo-murai/alarm-craft/wiki/Configuration) to specify monitoring targets using resource names or tags.
-- **Flexible Condition Definition**: Allows flexible definition of alarm conditions, including metrics and thresholds.
-- **Integration with Your Deployment Pipeline**: A CLI tool written in Python that [integrates](https://github.com/ryo-murai/alarm-craft/wiki/Automation) seamlessly into your deployment pipeline.
+- **Flexible Alarm Definition**: Allows flexible definition of alarm conditions, including metrics and thresholds.
+- **Declarative Config**: Provides [declarative configurations](https://github.com/ryo-murai/alarm-craft/wiki/ConfigurationByExample) for monitoring targets using resource name or tag.
+- **Integration with Your Deployment Pipeline**: A CLI tool written in Python that can be seamlessly [integrated](https://github.com/ryo-murai/alarm-craft/wiki/Automation) into the deployment pipeline.
+- **DevOps**: By leveraging declarative configurations based on the tag strategy and integrating `alarm-craft` with the deployment pipeline, DevOps teams can automatically monitor newly deployed resources.
 
 ## Quick Start
 
@@ -44,4 +45,4 @@ In modern architectures such as serverless and microservices, the number of clou
 
 ## Documentation
 
-For detailed instructions and information on configuring the tool, refer to the [Wiki](https://github.com/ryo-murai/alarm-craft/wiki).
+For detailed instructions and information on configuring the tool, refer to the [Wiki](https://github.com/ryo-murai/alarm-craft/wiki/Home#toc).
