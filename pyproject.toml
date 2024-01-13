@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "alarm-craft"
-version = "0.2.2"
+version = "0.2.3.dev0"
 authors = [
   { name="Ryo Murai", email="murai.ry@gmail.com" },
 ]
@@ -31,7 +31,9 @@ dependencies = [
 ]
 
 [project.urls]
+Documentation = "https://github.com/ryo-murai/alarm-craft?tab=readme-ov-file#aws-cloudwatch-alarm-craft"
 Homepage = "https://github.com/ryo-murai/alarm-craft"
+Source = "https://github.com/ryo-murai/alarm-craft.git"
 Issues = "https://github.com/ryo-murai/alarm-craft/issues"
 
 [project.scripts]

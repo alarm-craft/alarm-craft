@@ -1,7 +1,10 @@
 import pytest
 from pytest_mock import MockerFixture
 
+from alarm_craft.config_loader import DEFAULT_ALARM_NAME_PREFIX, default_global_config
 from alarm_craft.monitoring_targets import get_target_metrics
+
+alarm_prefix = DEFAULT_ALARM_NAME_PREFIX
 
 
 def _test_params(name1: str = "test1"):
@@ -66,12 +69,7 @@ def test_inherit_metrics_provider(mocker: MockerFixture, target_resource_type, s
 
     alarm_metric_name = "NumOfTestFailure"
     config = {
-        "globals": {
-            "alarm": {
-                "alarm_name_prefix": "",
-                "alarm_actions": [],
-            },
-        },
+        "globals": default_global_config(),
         "resources": {
             service_name: {
                 "target_resource_type": target_resource_type,
@@ -114,12 +112,6 @@ def test_inherit_metrics_provider_no_match_pattern(
 
     alarm_metric_name = "NumOfTestFailure"
     config = {
-        "globals": {
-            "alarm": {
-                "alarm_name_prefix": "",
-                "alarm_actions": [],
-            },
-        },
         "resources": {
             service_name: {
                 "target_resource_type": target_resource_type,
@@ -151,7 +143,6 @@ def test_get_target_metrics(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    alarm_prefix = "alarm-"
     resource_name = "test-225"
     service_config = {}
     mock_result = {}
@@ -188,12 +179,7 @@ def test_get_target_metrics(mocker: MockerFixture):
     mock_get_resources.side_effect = _mock_do_get_resources
 
     config = {
-        "globals": {
-            "alarm": {
-                "alarm_name_prefix": alarm_prefix,
-                "alarm_actions": [],
-            },
-        },
+        "globals": default_global_config(),
         "resources": service_config,
     }
 

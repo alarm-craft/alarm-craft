@@ -62,7 +62,7 @@
             "patternProperties": {
                 "^[\\-0-9A-Za-z]*$": {
                     "$ref": "#/definitions/resource_config",
-                    "description": "individual config for target resources and its alarms"
+                    "description": "arbitrary key with individual config for target resources and its alarms"
                 }
             },
             "additionalProperties": false,

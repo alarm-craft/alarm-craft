@@ -9,6 +9,7 @@ from moto import mock_cloudwatch
 from mypy_boto3_cloudwatch import CloudWatchClient
 from pytest_mock import MockerFixture
 
+from alarm_craft.config_loader import DEFAULT_ALARM_NAME_PREFIX
 from alarm_craft.monitoring_targets import MetricAlarmParam
 
 
@@ -38,12 +39,12 @@ def test_end_to_end_exec(
     mock_get_target_metrics = mocker.patch("alarm_craft.core.get_target_metrics")
 
     alarm_names = [
-        "alarm-test-10",
-        "alarm-test-11",
-        "alarm-test-20",
-        "alarm-test-21",
-        "alarm-test-30",
-        "alarm-test-31",
+        f"{DEFAULT_ALARM_NAME_PREFIX}10",
+        f"{DEFAULT_ALARM_NAME_PREFIX}11",
+        f"{DEFAULT_ALARM_NAME_PREFIX}20",
+        f"{DEFAULT_ALARM_NAME_PREFIX}21",
+        f"{DEFAULT_ALARM_NAME_PREFIX}30",
+        f"{DEFAULT_ALARM_NAME_PREFIX}31",
     ]
     alarm_params = [
         MetricAlarmParam(
@@ -68,7 +69,7 @@ def test_end_to_end_exec(
     # 11, 12, 21, 22, 31, 32
     for i, j in itertools.product(range(1, 4), range(1, 3)):
         cloudwatch_client.put_metric_alarm(
-            AlarmName=f"alarm-test-{i}{j}",
+            AlarmName=f"{DEFAULT_ALARM_NAME_PREFIX}{i}{j}",
             MetricName="dummy",
             Namespace="dummy",
             EvaluationPeriods=1,
@@ -86,21 +87,23 @@ def test_end_to_end_exec(
     core.main(command_opts)
 
     # assert
-    actual_result_alarms = cloudwatch_client.describe_alarms(AlarmNamePrefix="alarm-test-", AlarmTypes=["MetricAlarm"])
+    actual_result_alarms = cloudwatch_client.describe_alarms(
+        AlarmNamePrefix=DEFAULT_ALARM_NAME_PREFIX, AlarmTypes=["MetricAlarm"]
+    )
     actual_alarm_names = {a["AlarmName"] for a in actual_result_alarms["MetricAlarms"]}
     assert actual_alarm_names == set(alarm_names)
 
     out, _ = capfd.readouterr()
     expected_changeset_output_lines = [
-        "+ alarm-test-10",
-        "+ alarm-test-20",
-        "+ alarm-test-30",
-        "  alarm-test-21",
-        "  alarm-test-11",
-        "  alarm-test-31",
-        "- alarm-test-12",
-        "- alarm-test-22",
-        "- alarm-test-32",
+        f"+ {DEFAULT_ALARM_NAME_PREFIX}10",
+        f"+ {DEFAULT_ALARM_NAME_PREFIX}20",
+        f"+ {DEFAULT_ALARM_NAME_PREFIX}30",
+        f"  {DEFAULT_ALARM_NAME_PREFIX}21",
+        f"  {DEFAULT_ALARM_NAME_PREFIX}11",
+        f"  {DEFAULT_ALARM_NAME_PREFIX}31",
+        f"- {DEFAULT_ALARM_NAME_PREFIX}12",
+        f"- {DEFAULT_ALARM_NAME_PREFIX}22",
+        f"- {DEFAULT_ALARM_NAME_PREFIX}32",
     ]
     for expected in expected_changeset_output_lines:
         assert expected in out
@@ -122,7 +125,7 @@ def test_end_to_end_confirm(
         capfd (pytest.CaptureFixture[str]): capture for stdout
         cloudwatch_client (CloudWatchClient): CloudWatchClient
     """
-    alarm_name_prefix = "alarm-test-"
+    alarm_name_prefix = DEFAULT_ALARM_NAME_PREFIX
     required_alarm_names = [f"{alarm_name_prefix}{i}" for i in range(10)]
     existing_alarm_names = [f"{alarm_name_prefix}{i}" for i in range(5, 15)]
     mock_get_target_metrics = mocker.patch("alarm_craft.core.get_target_metrics")
@@ -204,7 +207,7 @@ def test_end_to_end_no_updates(
         capfd (pytest.CaptureFixture[str]): capture for stdout
         cloudwatch_client (CloudWatchClient): CloudWatchClient
     """
-    alarm_name_prefix = "alarm-test-"
+    alarm_name_prefix = DEFAULT_ALARM_NAME_PREFIX
     alarm_names = [f"{alarm_name_prefix}{i}" for i in range(10)]
     mock_get_target_metrics = mocker.patch("alarm_craft.core.get_target_metrics")
     alarm_params = [
@@ -269,7 +272,7 @@ def test_end_to_end_update_existing(
         capfd (CaptureFixture): capture
         cloudwatch_client (CloudWatchClient): cloudwatch client
     """
-    alarm_name_prefix = "alarm-test-"
+    alarm_name_prefix = DEFAULT_ALARM_NAME_PREFIX
     mock_get_target_metrics = mocker.patch("alarm_craft.core.get_target_metrics")
 
     alarm_params = [
@@ -330,7 +333,7 @@ def test_end_to_end_update_existing(
         assert f"U {alarm_name_prefix}{i}" in out
 
 
-def _config(alarm_name_prefix: str = "alarm-test-", alarm_actions: list[str] = None) -> dict:
+def _config(alarm_name_prefix: str = DEFAULT_ALARM_NAME_PREFIX, alarm_actions: list[str] = None) -> dict:
     conf = {
         "globals": {
             "alarm": {

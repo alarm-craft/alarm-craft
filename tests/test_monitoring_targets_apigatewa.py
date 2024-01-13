@@ -2,6 +2,8 @@ import boto3
 import pytest
 from moto import mock_apigateway
 
+from alarm_craft.config_loader import DEFAULT_ALARM_NAME_PREFIX
+
 
 @pytest.fixture()
 def restapi():
@@ -126,7 +128,9 @@ def test_apigateway_provider_tag_filter(tags, resource_names):
     target = ApiGatewayMetricsProvider(config, "apigateway")
     alarms = list(target.get_metric_alarms())
 
-    assert [f"{r}-{alarm_metric_name}" for r in resource_names] == [a["AlarmName"] for a in alarms]
+    assert [f"{DEFAULT_ALARM_NAME_PREFIX}{r}-{alarm_metric_name}" for r in resource_names] == [
+        a["AlarmName"] for a in alarms
+    ]
 
 
 @pytest.mark.usefixtures("restapi")
@@ -138,16 +142,16 @@ def test_apigateway_provider_through_get_target_metrics():
     alarm_params = list(get_target_metrics(config))
 
     expects = [
-        ("restapi-1-MyMetric", "MyMetric"),
-        ("restapi-2-MyMetric", "MyMetric"),
-        ("restapi-3-MyMetric", "MyMetric"),
+        (f"{DEFAULT_ALARM_NAME_PREFIX}restapi-1-MyMetric", "MyMetric"),
+        (f"{DEFAULT_ALARM_NAME_PREFIX}restapi-2-MyMetric", "MyMetric"),
+        (f"{DEFAULT_ALARM_NAME_PREFIX}restapi-3-MyMetric", "MyMetric"),
     ]
     actuals = [(a["AlarmName"], a["MetricName"]) for a in alarm_params]
     assert expects == actuals
 
 
 def _config(
-    alarm_name_prefix: str = "",
+    alarm_name_prefix: str = DEFAULT_ALARM_NAME_PREFIX,
     target_resource_type: str = "",
     target_resource_tags: dict[str, str] = {},
     alarm_namespace: str = "AWS/MyService",

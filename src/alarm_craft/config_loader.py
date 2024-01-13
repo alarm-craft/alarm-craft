@@ -46,6 +46,18 @@ def _merge_configs(config: ConfigValue) -> ConfigValue:
     return dict(config, **{"globals": glo, "resources": merged})
 
 
+DEFAULT_ALARM_NAME_PREFIX = "alarm-craft-autogen-"
+DEFAULT_ALARM_PARAMS = {
+    "Statistic": "Sum",
+    "Period": 60,
+    "EvaluationPeriods": 1,
+    "Threshold": 1,
+    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+    "TreatMissingData": "notBreaching",
+}
+DEFAULT_API_CALL_INTERVAL = 334
+
+
 def default_global_config() -> ConfigValue:
     """Gets default configuration of `global` key
 
@@ -54,19 +66,12 @@ def default_global_config() -> ConfigValue:
     """
     return {
         "alarm": {
-            "alarm_name_prefix": "alarm-craft-autogen-",
+            "alarm_name_prefix": DEFAULT_ALARM_NAME_PREFIX,
             "alarm_actions": [],
-            "default_alarm_params": {
-                "Statistic": "Sum",
-                "Period": 60,
-                "EvaluationPeriods": 1,
-                "Threshold": 1,
-                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
-                "TreatMissingData": "notBreaching",
-            },
+            "default_alarm_params": DEFAULT_ALARM_PARAMS,
         },
         "resource_filter": {},
-        "api_call_intervals_in_millis": 334,
+        "api_call_intervals_in_millis": DEFAULT_API_CALL_INTERVAL,
     }
 
 
