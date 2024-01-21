@@ -1,37 +1,10 @@
 import re
 from abc import ABC, abstractmethod
-from typing import Any, Callable, Generic, Iterable, Mapping, Optional, Protocol, Sequence, TypedDict, TypeVar
+from typing import Any, Callable, Generic, Iterable, Mapping, Optional, Protocol, Sequence, TypeVar
 
 import boto3
 
-
-class MetricAlarmParamRequired(TypedDict):
-    """Metric Alarm Parameter with required keys
-
-    Args:
-        TypedDict (_type_): typed dict
-    """
-
-    AlarmName: str
-    AlarmDescription: str
-    MetricName: str
-    Namespace: str
-    Dimensions: Sequence[Mapping[str, str]]
-
-
-class MetricAlarmParam(MetricAlarmParamRequired, total=False):
-    """Metric Alarm Parameter
-
-    Args:
-        MetricAlarmParamRequired (_type_): MetricAlarmParamRequired
-    """
-
-    Statistic: str
-    Period: int
-    EvaluationPeriods: int
-    Threshold: int
-    ComparisonOperator: str
-    TreatMissingData: str
+from .models import MetricAlarmParam, ResourceConfig
 
 
 def get_target_metrics(config: dict[str, Any]) -> Iterable[MetricAlarmParam]:
@@ -67,20 +40,21 @@ class TargetMetricsProvider(Protocol):
 
 
 def _get_target_metrics_providers(config: dict[str, Any]) -> Iterable[TargetMetricsProvider]:
-    for resource_config_name, resource_conf in config["resources"].items():
-        resource_type = resource_conf["target_resource_type"]
+    for resource_config_name, resource_config in config["resources"].items():
+        resource_type = resource_config["target_resource_type"]
+
         if resource_type == "lambda:function":
-            yield LambdaMetricsProvider(config, resource_config_name)
+            yield LambdaMetricsProvider(resource_config, resource_config_name)
         elif resource_type == "states:stateMachine":
-            yield SfnMetricsProvider(config, resource_config_name)
+            yield SfnMetricsProvider(resource_config, resource_config_name)
         elif resource_type == "apigateway:restapi":
-            yield ApiGatewayMetricsProvider(config, resource_config_name)
+            yield ApiGatewayMetricsProvider(resource_config, resource_config_name)
         elif resource_type == "sns:topic":
-            yield SnsMetricsProvider(config, resource_config_name)
+            yield SnsMetricsProvider(resource_config, resource_config_name)
         elif resource_type == "sqs:queue":
-            yield SqsMetricsProvider(config, resource_config_name)
+            yield SqsMetricsProvider(resource_config, resource_config_name)
         elif resource_type == "events:rule":
-            yield EventBridgeMetricsProvider(config, resource_config_name)
+            yield EventBridgeMetricsProvider(resource_config, resource_config_name)
         else:
             raise ValueError(f"no such resource type: ${resource_type}")
 
@@ -96,15 +70,15 @@ class TargetMetricsProviderBase(ABC, Generic[T]):
         Generic (_type_): type
     """
 
-    def __init__(self, config: dict[str, Any], service_name: str):
+    def __init__(self, resource_config: ResourceConfig, resource_config_name: str):
         """Constructor
 
         Args:
-            config (dict[str, Any]): config dict
-            service_name (str): service name, key of the service config
+            resource_config (ResourceAlarmConfig): resource config dict
+            resource_config_name (str): key of the resource config
         """
-        self.config = config
-        self.resource_config = config["resources"][service_name]
+        self.resource_config = resource_config
+        self.resource_config_name = resource_config_name
 
     def get_metric_alarms(self) -> Iterable[MetricAlarmParam]:
         """Gets metric alarms
@@ -115,16 +89,20 @@ class TargetMetricsProviderBase(ABC, Generic[T]):
         for resource in self.get_monitoring_target_resources():
             for metric in self.metric_names(resource):
                 param: MetricAlarmParam = {
-                    "AlarmName": self.alarm_name(metric, resource),
-                    "AlarmDescription": self.description(metric, resource),
-                    "MetricName": metric,
-                    "Namespace": self.namespace(),
-                    "Dimensions": self.dimensions(metric, resource),
+                    "TargetResource": {
+                        "ResourceName": self.get_resource_name(resource),
+                    },
+                    "AlarmProps": {
+                        "MetricName": metric,
+                        "Namespace": self.namespace(),
+                        "Dimensions": self.dimensions(metric, resource),
+                    },
                 }
 
                 param_overrides = self.param_overrides(metric, resource)
                 if param_overrides:
-                    param.update(param_overrides)  # type: ignore  # ensured by json schema validation
+                    # param_overrides is a AlarmProps ensured by jsonschema checking
+                    param["AlarmProps"].update(param_overrides)  # type: ignore
 
                 yield param
 
@@ -137,32 +115,6 @@ class TargetMetricsProviderBase(ABC, Generic[T]):
         """
         pass
 
-    def alarm_name(self, metric_name: str, resource: T) -> str:
-        """Gets alarm name
-
-        Args:
-            metric_name (str): metric name
-            resource (T): resource
-
-        Returns:
-            str: alarm name
-        """
-        name = self.get_resource_name(resource)
-        return f"{self.config['globals']['alarm']['alarm_name_prefix']}{name}-{metric_name}"
-
-    def description(self, metric_name: str, resource: T) -> str:
-        """Gets alarm description
-
-        Args:
-            metric_name (str): metric name
-            resource (T): resource
-
-        Returns:
-            str: alarm description
-        """
-        name = self.get_resource_name(resource)
-        return f"Metric Alarm for `{metric_name}` of {name}"
-
     def namespace(self) -> str:
         """Gets alarm namespace
 
@@ -171,7 +123,7 @@ class TargetMetricsProviderBase(ABC, Generic[T]):
         """
         return str(self.resource_config["alarm"]["namespace"])
 
-    def metric_names(self, resource: T) -> list[str]:
+    def metric_names(self, resource: T) -> Sequence[str]:
         """Gets metric names
 
         Args:
@@ -181,7 +133,6 @@ class TargetMetricsProviderBase(ABC, Generic[T]):
             list[str]: list of metric names
         """
         metrics = self.resource_config["alarm"]["metrics"]
-        assert isinstance(metrics, list), "metrics: value must be a list"
         return metrics
 
     @abstractmethod
@@ -209,11 +160,7 @@ class TargetMetricsProviderBase(ABC, Generic[T]):
         """
         param_overrides = self.resource_config["alarm"].get("alarm_param_overrides")
         if param_overrides:
-            assert isinstance(param_overrides, dict)
-            params = param_overrides.get(metric_name)
-            if params:
-                assert isinstance(params, dict)
-                return params
+            return param_overrides.get(metric_name)
 
         return None
 
@@ -284,7 +231,7 @@ class ResourceGroupsTaggingAPITargetMetricsProviderBase(TargetMetricsProviderBas
         """Gets resource name
 
         Args:
-            resource (T): resource
+            arn (T): resource
 
         Returns:
             str: resource name
@@ -312,7 +259,7 @@ class LambdaMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
 
         Args:
             metric_name (str): metric name
-            resource (T): resource
+            arn (T): resource
 
         Returns:
             Sequence[Mapping[str, str]]: alarm dimensions
@@ -329,7 +276,7 @@ class SfnMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
 
         Args:
             metric_name (str): metric name
-            resource (T): resource
+            arn (T): resource
 
         Returns:
             Sequence[Mapping[str, str]]: alarm dimensions
@@ -344,7 +291,7 @@ class SnsMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
         """Gets resource name
 
         Args:
-            resource (T): resource
+            arn (T): resource
 
         Returns:
             str: resource name
@@ -356,7 +303,7 @@ class SnsMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
 
         Args:
             metric_name (str): metric name
-            resource (T): resource
+            arn (T): resource
 
         Returns:
             Sequence[Mapping[str, str]]: alarm dimensions
@@ -372,7 +319,7 @@ class SqsMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
         """Gets resource name
 
         Args:
-            resource (T): resource
+            arn (T): resource
 
         Returns:
             str: resource name
@@ -384,7 +331,7 @@ class SqsMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
 
         Args:
             metric_name (str): metric name
-            resource (T): resource
+            arn (T): resource
 
         Returns:
             Sequence[Mapping[str, str]]: alarm dimensions
@@ -400,7 +347,7 @@ class EventBridgeMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBa
         """Gets resource name
 
         Args:
-            resource (T): resource
+            arn (T): resource
 
         Returns:
             str: resource name
@@ -412,7 +359,7 @@ class EventBridgeMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBa
 
         Args:
             metric_name (str): metric name
-            resource (T): resource
+            arn (T): resource
 
         Returns:
             Sequence[Mapping[str, str]]: alarm dimensions
@@ -441,7 +388,7 @@ class ApiGatewayMetricsProvider(TargetMetricsProviderBase[str]):
             pass
             # client.close()
 
-    def _contains_tags(self, actual_tags: dict[str, str], expected_tags: Optional[dict[str, str]]) -> bool:
+    def _contains_tags(self, actual_tags: Mapping[str, str], expected_tags: Optional[Mapping[str, str]]) -> bool:
         if expected_tags:
             tags = actual_tags.items()
             contains_all_expected_tags = all(tag in tags for tag in expected_tags.items())
@@ -453,7 +400,7 @@ class ApiGatewayMetricsProvider(TargetMetricsProviderBase[str]):
         """Gets resource name
 
         Args:
-            resource (T): resource
+            api_name (T): resource
 
         Returns:
             str: resource name
@@ -465,7 +412,7 @@ class ApiGatewayMetricsProvider(TargetMetricsProviderBase[str]):
 
         Args:
             metric_name (str): metric name
-            resource (T): resource
+            api_name (T): resource
 
         Returns:
             Sequence[Mapping[str, str]]: alarm dimensions

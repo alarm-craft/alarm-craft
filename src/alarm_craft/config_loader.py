@@ -5,9 +5,13 @@ import jsonschema
 
 from . import config_schema
 
+# type declaration
 ConfigElement = Union[str, int, bool, "ConfigList", "ConfigValue"]
 ConfigList = List[ConfigElement]
 ConfigValue = Dict[str, ConfigElement]
+
+# constants
+DEFAULT_CONFIG_FILE = "alarm-config.json"
 
 
 def load(file_path: Optional[str]) -> ConfigValue:
@@ -19,7 +23,7 @@ def load(file_path: Optional[str]) -> ConfigValue:
     Returns:
         ConfigValue: config dict
     """
-    with open(file_path, "r") as f:
+    with open(file_path or DEFAULT_CONFIG_FILE, "r") as f:
         config = json.load(f)
     jsonschema.validate(config, config_schema.get_schema())
 
@@ -47,7 +51,7 @@ def _merge_configs(config: ConfigValue) -> ConfigValue:
 
 
 DEFAULT_ALARM_NAME_PREFIX = "alarm-craft-autogen-"
-DEFAULT_ALARM_PARAMS = {
+DEFAULT_ALARM_PARAMS: ConfigValue = {
     "Statistic": "Sum",
     "Period": 60,
     "EvaluationPeriods": 1,

@@ -1,10 +1,12 @@
+import itertools
 import logging
 from dataclasses import dataclass
 from typing import Iterable, Optional
 
 from . import config_loader
 from .alarm import AlarmHandler
-from .monitoring_targets import MetricAlarmParam, get_target_metrics
+from .models import AlarmProps
+from .monitoring_targets import get_target_metrics
 
 logger = logging.getLogger(__name__)
 
@@ -37,7 +39,7 @@ def main(opts: CommandOpts) -> None:
         if force_update or _prompt_update():
             _print("!!! UPDATE ALARMS !!!")
             if opts.update_existing_alarms:
-                alarm_handler.update_alarms(target_metrics, delete, opts.notification_topic_arn)
+                alarm_handler.update_alarms(itertools.chain(create, keep), delete, opts.notification_topic_arn)
             else:
                 alarm_handler.update_alarms(create, delete, opts.notification_topic_arn)
         else:
@@ -47,7 +49,7 @@ def main(opts: CommandOpts) -> None:
 
 
 def _print_chagne_set(
-    to_create: Iterable[MetricAlarmParam], no_update: list[str], to_delete: list[str], anyway_update: bool
+    to_create: Iterable[AlarmProps], no_update: Iterable[AlarmProps], to_delete: list[str], anyway_update: bool
 ) -> None:
     adding_label = "+ "
     exists_label = "  " if not anyway_update else "U "
@@ -55,8 +57,8 @@ def _print_chagne_set(
 
     for a in to_create:
         _print(adding_label + a["AlarmName"])
-    for s in no_update:
-        _print(exists_label + s)
+    for a in no_update:
+        _print(exists_label + a["AlarmName"])
     for s in to_delete:
         _print(delete_label + s)
 

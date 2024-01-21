@@ -10,6 +10,7 @@ from mypy_boto3_cloudwatch import CloudWatchClient
 from pytest_mock import MockerFixture
 
 from alarm_craft.config_loader import DEFAULT_ALARM_NAME_PREFIX
+from alarm_craft.models import AlarmProps, TargetResource
 from alarm_craft.monitoring_targets import MetricAlarmParam
 
 
@@ -38,23 +39,19 @@ def test_end_to_end_exec(
     """
     mock_get_target_metrics = mocker.patch("alarm_craft.core.get_target_metrics")
 
-    alarm_names = [
-        f"{DEFAULT_ALARM_NAME_PREFIX}10",
-        f"{DEFAULT_ALARM_NAME_PREFIX}11",
-        f"{DEFAULT_ALARM_NAME_PREFIX}20",
-        f"{DEFAULT_ALARM_NAME_PREFIX}21",
-        f"{DEFAULT_ALARM_NAME_PREFIX}30",
-        f"{DEFAULT_ALARM_NAME_PREFIX}31",
-    ]
+    metric = "dummy"
+    # 10, 11, 20, 21, 30, 31
+    resource_names = [f"{i}{j}" for i, j in itertools.product(range(0, 4), range(0, 2))]
     alarm_params = [
         MetricAlarmParam(
-            AlarmName=name,
-            AlarmDescription="",
-            MetricName="dummy",
-            Namespace="dummy",
-            Dimensions=[],
+            TargetResource=TargetResource(
+                ResourceName=resource_name,
+            ),
+            AlarmProps=AlarmProps(
+                MetricName=metric,
+            ),
         )
-        for name in alarm_names
+        for resource_name in resource_names
     ]
 
     mock_get_target_metrics.return_value = alarm_params
@@ -69,7 +66,7 @@ def test_end_to_end_exec(
     # 11, 12, 21, 22, 31, 32
     for i, j in itertools.product(range(1, 4), range(1, 3)):
         cloudwatch_client.put_metric_alarm(
-            AlarmName=f"{DEFAULT_ALARM_NAME_PREFIX}{i}{j}",
+            AlarmName=f"{DEFAULT_ALARM_NAME_PREFIX}{i}{j}-{metric}",
             MetricName="dummy",
             Namespace="dummy",
             EvaluationPeriods=1,
@@ -91,19 +88,19 @@ def test_end_to_end_exec(
         AlarmNamePrefix=DEFAULT_ALARM_NAME_PREFIX, AlarmTypes=["MetricAlarm"]
     )
     actual_alarm_names = {a["AlarmName"] for a in actual_result_alarms["MetricAlarms"]}
-    assert actual_alarm_names == set(alarm_names)
+    assert actual_alarm_names == {f"{DEFAULT_ALARM_NAME_PREFIX}{r}-{metric}" for r in resource_names}
 
     out, _ = capfd.readouterr()
     expected_changeset_output_lines = [
-        f"+ {DEFAULT_ALARM_NAME_PREFIX}10",
-        f"+ {DEFAULT_ALARM_NAME_PREFIX}20",
-        f"+ {DEFAULT_ALARM_NAME_PREFIX}30",
-        f"  {DEFAULT_ALARM_NAME_PREFIX}21",
-        f"  {DEFAULT_ALARM_NAME_PREFIX}11",
-        f"  {DEFAULT_ALARM_NAME_PREFIX}31",
-        f"- {DEFAULT_ALARM_NAME_PREFIX}12",
-        f"- {DEFAULT_ALARM_NAME_PREFIX}22",
-        f"- {DEFAULT_ALARM_NAME_PREFIX}32",
+        f"+ {DEFAULT_ALARM_NAME_PREFIX}10-{metric}",
+        f"+ {DEFAULT_ALARM_NAME_PREFIX}20-{metric}",
+        f"+ {DEFAULT_ALARM_NAME_PREFIX}30-{metric}",
+        f"  {DEFAULT_ALARM_NAME_PREFIX}21-{metric}",
+        f"  {DEFAULT_ALARM_NAME_PREFIX}11-{metric}",
+        f"  {DEFAULT_ALARM_NAME_PREFIX}31-{metric}",
+        f"- {DEFAULT_ALARM_NAME_PREFIX}12-{metric}",
+        f"- {DEFAULT_ALARM_NAME_PREFIX}22-{metric}",
+        f"- {DEFAULT_ALARM_NAME_PREFIX}32-{metric}",
     ]
     for expected in expected_changeset_output_lines:
         assert expected in out
@@ -126,20 +123,26 @@ def test_end_to_end_confirm(
         cloudwatch_client (CloudWatchClient): CloudWatchClient
     """
     alarm_name_prefix = DEFAULT_ALARM_NAME_PREFIX
-    required_alarm_names = [f"{alarm_name_prefix}{i}" for i in range(10)]
-    existing_alarm_names = [f"{alarm_name_prefix}{i}" for i in range(5, 15)]
+    metric = "dummy"
     mock_get_target_metrics = mocker.patch("alarm_craft.core.get_target_metrics")
+
     alarm_params = [
         MetricAlarmParam(
-            AlarmName=name,
-            AlarmDescription="",
-            MetricName="dummy",
-            Namespace="dummy",
-            Dimensions=[],
+            TargetResource=TargetResource(
+                ResourceName=f"{i}",
+            ),
+            AlarmProps=AlarmProps(
+                MetricName=metric,
+            ),
         )
-        for name in required_alarm_names
+        for i in range(10)
     ]
     mock_get_target_metrics.return_value = alarm_params
+
+    required_alarm_names = [
+        f"{alarm_name_prefix}{almparam['TargetResource']['ResourceName']}-{metric}" for almparam in alarm_params
+    ]
+    existing_alarm_names = [f"{alarm_name_prefix}{i}-{metric}" for i in range(5, 15)]
 
     # create config
     config_path = tmp_path / "config.json"
@@ -208,19 +211,25 @@ def test_end_to_end_no_updates(
         cloudwatch_client (CloudWatchClient): CloudWatchClient
     """
     alarm_name_prefix = DEFAULT_ALARM_NAME_PREFIX
-    alarm_names = [f"{alarm_name_prefix}{i}" for i in range(10)]
     mock_get_target_metrics = mocker.patch("alarm_craft.core.get_target_metrics")
+
+    metric = "dummy"
     alarm_params = [
         MetricAlarmParam(
-            AlarmName=name,
-            AlarmDescription="",
-            MetricName="dummy",
-            Namespace="dummy",
-            Dimensions=[],
+            TargetResource=TargetResource(
+                ResourceName=f"{i}",
+            ),
+            AlarmProps=AlarmProps(
+                MetricName=metric,
+            ),
         )
-        for name in alarm_names
+        for i in range(10)
     ]
     mock_get_target_metrics.return_value = alarm_params
+
+    required_alarm_names = [
+        f"{alarm_name_prefix}{almparam['TargetResource']['ResourceName']}-{metric}" for almparam in alarm_params
+    ]
 
     # create config
     config_path = tmp_path / "config.json"
@@ -229,10 +238,10 @@ def test_end_to_end_no_updates(
         json.dump(conf, f)
 
     # existing alarms
-    for name in alarm_names:
+    for name in required_alarm_names:
         cloudwatch_client.put_metric_alarm(
             AlarmName=name,
-            MetricName="dummy",
+            MetricName=metric,
             Namespace="dummy",
             EvaluationPeriods=1,
             ComparisonOperator="GreaterThanOrEqualToThreshold",
@@ -255,7 +264,7 @@ def test_end_to_end_no_updates(
         AlarmTypes=["MetricAlarm"],
     )["MetricAlarms"]
     actual_alarm_names = {a["AlarmName"] for a in actual_result_alarms}
-    assert actual_alarm_names == set(alarm_names), "must the same"
+    assert actual_alarm_names == set(required_alarm_names), "must the same"
 
     out, _ = capfd.readouterr()
     assert "no updates" in out
@@ -275,17 +284,20 @@ def test_end_to_end_update_existing(
     alarm_name_prefix = DEFAULT_ALARM_NAME_PREFIX
     mock_get_target_metrics = mocker.patch("alarm_craft.core.get_target_metrics")
 
+    metric = "dummy"
     alarm_params = [
         MetricAlarmParam(
-            AlarmName=f"{alarm_name_prefix}{i}",
-            AlarmDescription="",
-            MetricName="dummy",
-            Namespace="dummy",
-            Dimensions=[],
+            TargetResource=TargetResource(
+                ResourceName=f"{i}",
+            ),
+            AlarmProps=AlarmProps(
+                MetricName=metric,
+            ),
         )
         for i in range(100)
     ]
     mock_get_target_metrics.return_value = alarm_params
+    required_alarm_names = [f"{alarm_name_prefix}{p['TargetResource']['ResourceName']}-{metric}" for p in alarm_params]
 
     # create config
     alarm_topic_arn = "arn:aws:sns:ap-northeast-1:123456789012:alarming0001"
@@ -297,8 +309,8 @@ def test_end_to_end_update_existing(
     # existing alarms
     for i in range(50, 150):
         cloudwatch_client.put_metric_alarm(
-            AlarmName=f"{alarm_name_prefix}{i}",
-            MetricName="dummy",
+            AlarmName=f"{alarm_name_prefix}{i}-{metric}",
+            MetricName=metric,
             Namespace="dummy",
             AlarmActions=[],  # empty
             EvaluationPeriods=1,
@@ -320,7 +332,7 @@ def test_end_to_end_update_existing(
         AlarmTypes=["MetricAlarm"],
     )["MetricAlarms"]
     actual_alarm_names = {a["AlarmName"] for a in actual_result_alarms}
-    assert actual_alarm_names == {a["AlarmName"] for a in alarm_params}
+    assert actual_alarm_names == set(required_alarm_names)
     for a in actual_result_alarms:
         assert a["AlarmActions"] == [alarm_topic_arn]
         assert a["OKActions"] == [alarm_topic_arn]
@@ -328,9 +340,9 @@ def test_end_to_end_update_existing(
 
     out, _ = capfd.readouterr()
     for i in range(50):
-        assert f"+ {alarm_name_prefix}{i}" in out
+        assert f"+ {alarm_name_prefix}{i}-{metric}" in out
     for i in range(50, 100):
-        assert f"U {alarm_name_prefix}{i}" in out
+        assert f"U {alarm_name_prefix}{i}-{metric}" in out
 
 
 def _config(alarm_name_prefix: str = DEFAULT_ALARM_NAME_PREFIX, alarm_actions: list[str] = None) -> dict:
