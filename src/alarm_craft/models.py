@@ -42,36 +42,6 @@ class MetricAlarmParam(TypedDict):
     AlarmProps: AlarmProps
 
 
-class MetricAlarmParamRequired(TypedDict):
-    """Metric Alarm Parameter with required keys
-
-    Args:
-        TypedDict (_type_): typed dict
-    """
-
-    ResourceName: str
-    MetricName: str
-    Namespace: str
-    Dimensions: Sequence[Mapping[str, str]]
-
-
-class MetricAlarmParam2(MetricAlarmParamRequired, total=False):
-    """Metric Alarm Parameter
-
-    Args:
-        MetricAlarmParamRequired (_type_): MetricAlarmParamRequired
-    """
-
-    AlarmName: str
-    AlarmDescription: str
-    Statistic: str
-    Period: int
-    EvaluationPeriods: int
-    Threshold: int
-    ComparisonOperator: str
-    TreatMissingData: str
-
-
 class ResourceAlarmConfig(TypedDict):
     """Alarm Config in Resource Config
 

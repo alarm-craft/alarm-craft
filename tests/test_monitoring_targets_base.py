@@ -4,7 +4,9 @@ import pytest
 from pytest_mock import MockerFixture
 
 from alarm_craft.models import AlarmProps, MetricAlarmParam, TargetResource
-from alarm_craft.monitoring_targets import ResourceGroupsTaggingAPITargetMetricsProviderBase
+from alarm_craft.monitoring_targets.target_metrics_provider_rgta import (
+    ResourceGroupsTaggingAPITargetMetricsProviderBase,
+)
 
 
 class MyTestMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
@@ -34,7 +36,7 @@ def test_base_provider(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     alarm_namespace = "AWS/MyService"
@@ -102,7 +104,7 @@ def test_base_provider_call_api(mocker: MockerFixture, resource_type: str, resou
         resource_tags (_type_): _description_
         converted_tag_expression (_type_): _description_
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     config = _config(target_resource_type=resource_type, target_resource_tags=resource_tags)
@@ -123,7 +125,7 @@ def test_base_provider_with_resource_name_pattern(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     alarm_namespace = "AWS/MyService"
@@ -162,7 +164,7 @@ def test_base_provider_multiple_metrics(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     alarm_metric_name1 = "NumOfTestFailure"
@@ -191,7 +193,7 @@ def test_base_provider_optional_config_key(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     target_resource_type = "type1"
@@ -217,7 +219,7 @@ def test_param_overrides(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     alarm_metric_name1 = "NumOfTestFailure"
@@ -300,7 +302,7 @@ def test_api_pagenation(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     # todo:

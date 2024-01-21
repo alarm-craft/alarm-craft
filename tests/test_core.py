@@ -10,8 +10,7 @@ from mypy_boto3_cloudwatch import CloudWatchClient
 from pytest_mock import MockerFixture
 
 from alarm_craft.config_loader import DEFAULT_ALARM_NAME_PREFIX
-from alarm_craft.models import AlarmProps, TargetResource
-from alarm_craft.monitoring_targets import MetricAlarmParam
+from alarm_craft.models import AlarmProps, MetricAlarmParam, TargetResource
 
 
 @pytest.fixture()

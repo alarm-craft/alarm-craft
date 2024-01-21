@@ -45,7 +45,7 @@ def test_apigateway_provider_basic():
     Args:
         mocker (MockerFixture): mocker
     """
-    from alarm_craft.monitoring_targets import ApiGatewayMetricsProvider
+    from alarm_craft.monitoring_targets.target_metrics_provider_apigw import ApiGatewayMetricsProvider
 
     alarm_namespace = "AWS/APIGateway"
     alarm_metric_name = "TestsCount"
@@ -144,7 +144,7 @@ def test_apigateway_provider_tag_filter(tags, resource_names):
         tags (dict): tags
         resource_names (list[str]): list of resource names
     """
-    from alarm_craft.monitoring_targets import ApiGatewayMetricsProvider
+    from alarm_craft.monitoring_targets.target_metrics_provider_apigw import ApiGatewayMetricsProvider
 
     alarm_metric_name = "TestsCount"
     config = _config(

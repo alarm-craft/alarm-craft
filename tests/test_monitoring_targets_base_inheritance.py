@@ -61,7 +61,7 @@ def test_inherit_metrics_provider(mocker: MockerFixture, target_resource_type, s
         arn (str): arn
         dimensions (list): alarm dimensions
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     resource_name = "test1"
@@ -105,7 +105,7 @@ def test_inherit_metrics_provider_no_match_pattern(
         arn (str): arn
         dimensions (list): alarm dimensions
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     alarm_metric_name = "NumOfTestFailure"
@@ -171,7 +171,7 @@ def test_get_target_metrics(mocker: MockerFixture):
             }
         )
 
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     def _mock_do_get_resources(*args, **kwargs):
