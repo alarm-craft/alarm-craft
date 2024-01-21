@@ -3,6 +3,7 @@
 [![Python - Version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fryo-murai%2Falarm-craft%2Fmain%2Fpyproject.toml&logo=python)](https://www.python.org/downloads/)
 [![PyPI - Version](https://img.shields.io/pypi/v/alarm-craft)](https://pypi.org/project/alarm-craft/)
 [![PyPI - License](https://img.shields.io/pypi/l/alarm-craft)](https://pypi.org/project/alarm-craft/)
+[![CI for alarm-craft](https://github.com/ryo-murai/alarm-craft/actions/workflows/ci.yml/badge.svg)](https://github.com/ryo-murai/alarm-craft/actions/workflows/ci.yml)
 ![aws](https://img.shields.io/badge/-Amazon%20Web%20Services-232F3E.svg?logo=amazon-aws&style=flat)
 ![cloudwatch](https://img.shields.io/badge/Made%20for-Amazon%20CloudWatch%20Alarms-FF4F8B.svg?logo=amazon-cloudwatch&style=flat)
 
