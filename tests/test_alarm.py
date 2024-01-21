@@ -8,7 +8,8 @@ from moto import mock_cloudwatch
 from mypy_boto3_cloudwatch.client import CloudWatchClient
 
 from alarm_craft.alarm import AlarmHandler
-from alarm_craft.monitoring_targets import MetricAlarmParam
+from alarm_craft.config_loader import DEFAULT_ALARM_NAME_PREFIX, DEFAULT_ALARM_PARAMS
+from alarm_craft.models import AlarmProps, MetricAlarmParam, TargetResource
 
 
 @pytest.fixture()
@@ -23,17 +24,47 @@ def cloudwatch_client():
         yield cloudwatch_client
 
 
+def _alarm_name_creation_param():
+    prefix = ["alarm-craft-gen-", "abdcefg-"]
+    resources = ["res1", "res2"]
+    metrics = ["met1", "met2", "met3"]
+    return list(itertools.product(prefix, resources, metrics))
+
+
+@pytest.mark.parametrize("prefix, resource_name, alarm_metric", _alarm_name_creation_param())
+def test_alarm_props_from_metric_alarm_params(cloudwatch_client: CloudWatchClient, prefix, resource_name, alarm_metric):
+    """Tests creating an alarm with proper name / description
+
+    Args:
+        cloudwatch_client (CloudWatchClient): CloudWatchClient
+        resource_name (str): resource name
+        alarm_metric (str): alarm metric name
+    """
+    params: MetricAlarmParam = {
+        "TargetResource": {
+            "ResourceName": resource_name,
+        },
+        "AlarmProps": {
+            "MetricName": alarm_metric,
+        },
+    }
+    handler = AlarmHandler(_config(alarm_name_prefix=prefix))
+    create_alarms, _, _ = handler.get_alarms_change_set([params])
+    for alm in create_alarms:
+        assert f"{prefix}{resource_name}-{alarm_metric}" == alm["AlarmName"]
+
+
 def _alarm_test_params():
     return [
         (
-            "alarm-test-resource-1",
+            f"{DEFAULT_ALARM_NAME_PREFIX}resource-1",
             "12345678901234567890",
             "TestsCount",
             "AWS/MyService",
             [{"Name": "MyResourceName", "Value": "myresource-1"}],
         ),
         (
-            "alarm-test-resource-2",
+            f"{DEFAULT_ALARM_NAME_PREFIX}resource-2",
             "qwertyuiop",
             "NumOfTests",
             "AWS/XService",
@@ -58,7 +89,7 @@ def test_create_alarm_basic(
     """
     handler = AlarmHandler(_config())
 
-    alarm = MetricAlarmParam(
+    alarm = AlarmProps(
         AlarmName=alarm_name,
         AlarmDescription=alarm_desc,
         MetricName=alarm_metric,
@@ -80,12 +111,10 @@ def test_create_alarm_basic(
     assert curr_alarm["Dimensions"] == alarm_dimension
 
     assert curr_alarm["AlarmActions"] == []
-    assert curr_alarm["Statistic"] == "Sum"
-    assert curr_alarm["Period"] == 60
-    assert curr_alarm["EvaluationPeriods"] == 1
-    assert curr_alarm["Threshold"] == 1
-    assert curr_alarm["ComparisonOperator"] == "GreaterThanOrEqualToThreshold"
-    assert curr_alarm["TreatMissingData"] == "notBreaching"
+
+    # other properties are set as default
+    for k, v in DEFAULT_ALARM_PARAMS.items():
+        assert curr_alarm[k] == v  # type: ignore
 
 
 def test_create_alarm_param_overrides(cloudwatch_client: CloudWatchClient):
@@ -96,8 +125,8 @@ def test_create_alarm_param_overrides(cloudwatch_client: CloudWatchClient):
     """
     handler = AlarmHandler(_config())
 
-    alarm_param = MetricAlarmParam(
-        AlarmName="alarm-name-0001",
+    alarm_param = AlarmProps(
+        AlarmName=f"{DEFAULT_ALARM_NAME_PREFIX}0001",
         AlarmDescription="",
         MetricName="dummy",
         Namespace="dummy",
@@ -111,7 +140,7 @@ def test_create_alarm_param_overrides(cloudwatch_client: CloudWatchClient):
     )
 
     handler.update_alarms([alarm_param], [], [])
-    api_resp = cloudwatch_client.describe_alarms(AlarmNamePrefix=alarm_param["AlarmName"], AlarmTypes=["MetricAlarm"])
+    api_resp = cloudwatch_client.describe_alarms(AlarmNamePrefix=DEFAULT_ALARM_NAME_PREFIX, AlarmTypes=["MetricAlarm"])
 
     curr_alarms = api_resp["MetricAlarms"]
     assert len(curr_alarms) == 1
@@ -178,7 +207,7 @@ def test_default_alarm_params(
     config = _config()
     config["globals"]["alarm"]["default_alarm_params"] = default_alarm_params
 
-    alarm_param = MetricAlarmParam(
+    alarm_param = AlarmProps(
         AlarmName="alarm-name-0001",
         AlarmDescription="",
         MetricName="dummy",
@@ -236,7 +265,7 @@ def test_create_alarm_with_action(
     """
     handler = AlarmHandler(_config(alarm_actions=alarm_action_config))
 
-    alarm = MetricAlarmParam(
+    alarm = AlarmProps(
         AlarmName=alarm_name,
         AlarmDescription="",
         MetricName="dummy",
@@ -305,8 +334,8 @@ def test_create_alarm_with_tags(
 
     handler = AlarmHandler(config)
 
-    alarm = MetricAlarmParam(
-        AlarmName="alarm-name-0001111",
+    alarm = AlarmProps(
+        AlarmName=f"{DEFAULT_ALARM_NAME_PREFIX}0001111",
         AlarmDescription="",
         MetricName="dummy",
         Namespace="dummy",
@@ -337,8 +366,8 @@ def test_update_with_interval(cloudwatch_client: CloudWatchClient, interval: int
     handler = AlarmHandler(config)
 
     alarms = [
-        MetricAlarmParam(
-            AlarmName=f"alarm-name-{i}",
+        AlarmProps(
+            AlarmName=f"{DEFAULT_ALARM_NAME_PREFIX}{i}",
             AlarmDescription="",
             MetricName="dummy",
             Namespace="dummy",
@@ -352,7 +381,7 @@ def test_update_with_interval(cloudwatch_client: CloudWatchClient, interval: int
     after = time.time()
 
     curr_alarms = cloudwatch_client.describe_alarms(
-        AlarmNamePrefix="alarm-name-",
+        AlarmNamePrefix=DEFAULT_ALARM_NAME_PREFIX,
         AlarmTypes=["MetricAlarm"],
     )["MetricAlarms"]
 
@@ -375,7 +404,7 @@ def test_delete_with_interval(cloudwatch_client: CloudWatchClient, interval: int
     handler = AlarmHandler(config)
 
     num_alarms = (num_api_calls - 1) * 100 + 1  # ex.) 201 makes three calls of 100, 100 and 1.
-    alarm_names = [f"alarm-name-{i}" for i in range(num_alarms)]
+    alarm_names = [f"{DEFAULT_ALARM_NAME_PREFIX}{i}" for i in range(num_alarms)]
 
     for name in alarm_names:
         cloudwatch_client.put_metric_alarm(
@@ -391,7 +420,7 @@ def test_delete_with_interval(cloudwatch_client: CloudWatchClient, interval: int
     after = time.time()
 
     curr_alarms = cloudwatch_client.describe_alarms(
-        AlarmNamePrefix="alarm-name-",
+        AlarmNamePrefix=DEFAULT_ALARM_NAME_PREFIX,
         AlarmTypes=["MetricAlarm"],
     )["MetricAlarms"]
 
@@ -419,7 +448,7 @@ def test_create_and_delete_alarms(cloudwatch_client: CloudWatchClient):
 
     create_alarm_names = [f"{alarm_name_prefix}alarm-1{i}" for i in range(2, 4)]
     create_alarms = [
-        MetricAlarmParam(
+        AlarmProps(
             AlarmName=alarm_name,
             AlarmDescription="",
             MetricName="dummy",
@@ -458,8 +487,8 @@ def test_create_changeset(cloudwatch_client: CloudWatchClient):
     # 00, 01, 10, 11
     for i, j in itertools.product(range(0, 2), range(0, 2)):
         cloudwatch_client.put_metric_alarm(
-            AlarmName=f"{alarm_name_prefix}{i}{j}",
-            MetricName="dummy",
+            AlarmName=f"{alarm_name_prefix}{i}{j}-m1",
+            MetricName="m1",
             Namespace="dummy",
             EvaluationPeriods=1,
             ComparisonOperator="GreaterThanOrEqualToThreshold",
@@ -476,38 +505,39 @@ def test_create_changeset(cloudwatch_client: CloudWatchClient):
 
     # create required alarm params
     # 10, 11, 20, 21
-    create_alarm_names = [f"{alarm_name_prefix}{i}{j}" for i, j in itertools.product(range(1, 3), range(0, 2))]
     alarm_params = [
         MetricAlarmParam(
-            AlarmName=alarm_name,
-            AlarmDescription="",
-            MetricName="dummy",
-            Namespace="dummy",
-            Dimensions=[],
+            TargetResource=TargetResource(
+                ResourceName=f"{i}{j}",
+            ),
+            AlarmProps=AlarmProps(
+                MetricName="m1",
+            ),
         )
-        for alarm_name in create_alarm_names
+        for i, j in itertools.product(range(1, 3), range(0, 2))
     ]
 
     handler = AlarmHandler(_config(alarm_name_prefix=alarm_name_prefix))
     to_create, no_update, to_delete = handler.get_alarms_change_set(alarm_params)
+    no_update_alarm_names = {a["AlarmName"] for a in no_update}
 
     assert {a["AlarmName"] for a in to_create} == {
-        f"{alarm_name_prefix}20",
-        f"{alarm_name_prefix}21",
+        f"{alarm_name_prefix}20-m1",
+        f"{alarm_name_prefix}21-m1",
     }
     assert (
-        alarm_with_different_prefix not in no_update
+        alarm_with_different_prefix not in no_update_alarm_names
     ), "only alarms having the prefix in config are calclated as changesets"
-    assert {a for a in no_update} == {
-        f"{alarm_name_prefix}10",
-        f"{alarm_name_prefix}11",
+    assert no_update_alarm_names == {
+        f"{alarm_name_prefix}10-m1",
+        f"{alarm_name_prefix}11-m1",
     }
     assert (
         alarm_with_different_prefix not in to_delete
     ), "only alarms having the prefix in config are calclated as changesets"
     assert {a for a in to_delete} == {
-        f"{alarm_name_prefix}00",
-        f"{alarm_name_prefix}01",
+        f"{alarm_name_prefix}00-m1",
+        f"{alarm_name_prefix}01-m1",
     }
 
 
@@ -521,14 +551,15 @@ def test_describe_alarm_api_more_than_100(cloudwatch_client: CloudWatchClient):
     Args:
         cloudwatch_client (CloudWatchClient): cloudwatch client
     """
-    alarm_name_prefix = "alarm-test"
-    num_current_alarms = 2022
+    alarm_name_prefix = DEFAULT_ALARM_NAME_PREFIX
+    num_current_alarms = 2024
     offset = 1511  # must be < num_current_alarms
+    addition = 3
 
     for i in range(num_current_alarms):
         cloudwatch_client.put_metric_alarm(
-            AlarmName=f"{alarm_name_prefix}-{i}",
-            MetricName="dummy",
+            AlarmName=f"{alarm_name_prefix}{i}-m1",
+            MetricName="m1",
             Namespace="dummy",
             EvaluationPeriods=1,
             ComparisonOperator="GreaterThanOrEqualToThreshold",
@@ -536,36 +567,30 @@ def test_describe_alarm_api_more_than_100(cloudwatch_client: CloudWatchClient):
 
     alarm_params = [
         MetricAlarmParam(
-            AlarmName=f"{alarm_name_prefix}-{i}",
-            AlarmDescription="",
-            MetricName="dummy",
-            Namespace="dummy",
-            Dimensions=[],
+            TargetResource=TargetResource(
+                ResourceName=f"{i}",
+            ),
+            AlarmProps=AlarmProps(
+                MetricName="m1",
+            ),
         )
-        for i in range(offset, num_current_alarms + offset)
+        for i in range(offset, num_current_alarms + offset + addition)
     ]
 
-    handler = AlarmHandler(_config(alarm_name_prefix=alarm_name_prefix))
+    handler = AlarmHandler(_config())
     to_create, no_update, to_delete = handler.get_alarms_change_set(alarm_params)
-    assert len(list(to_create)) == offset
-    assert len(no_update) == num_current_alarms - offset
+    assert len(list(to_create)) == offset + addition
+    assert len(list(no_update)) == num_current_alarms - offset
     assert len(to_delete) == offset
 
 
-def _config(alarm_name_prefix: str = "", alarm_actions: list[str] = []):
+def _config(alarm_name_prefix: str = DEFAULT_ALARM_NAME_PREFIX, alarm_actions: list[str] = []):
     return {
         "globals": {
             "alarm": {
                 "alarm_name_prefix": alarm_name_prefix,
                 "alarm_actions": alarm_actions,
-                "default_alarm_params": {  # default alarm params given from config_loader
-                    "Statistic": "Sum",
-                    "Period": 60,
-                    "EvaluationPeriods": 1,
-                    "Threshold": 1,
-                    "ComparisonOperator": "GreaterThanOrEqualToThreshold",
-                    "TreatMissingData": "notBreaching",
-                },
+                "default_alarm_params": DEFAULT_ALARM_PARAMS,
             },
             "api_call_intervals_in_millis": 0,
         },

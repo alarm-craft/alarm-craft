@@ -4,22 +4,13 @@ from typing import Any, Iterable
 
 import boto3
 
-from .monitoring_targets import MetricAlarmParam
+from .models import AlarmProps, MetricAlarmParam
 
 logger = logging.getLogger(__name__)
 
 
 class AlarmHandler:
     """Alarm Handler"""
-
-    DEFAULT_ALARM_CONF = {
-        "Statistic": "Sum",
-        "Period": 60,
-        "EvaluationPeriods": 1,
-        "Threshold": 1,
-        "ComparisonOperator": "GreaterThanOrEqualToThreshold",
-        "TreatMissingData": "notBreaching",
-    }
 
     def __init__(self, config: dict[str, Any]) -> None:
         """Constructor
@@ -37,25 +28,38 @@ class AlarmHandler:
 
     def get_alarms_change_set(
         self, alarm_params: Iterable[MetricAlarmParam]
-    ) -> tuple[Iterable[MetricAlarmParam], list[str], list[str]]:
+    ) -> tuple[Iterable[AlarmProps], Iterable[AlarmProps], list[str]]:
         """Gets alarm change set
 
         Args:
             alarm_params (Iterable[MetricAlarmParam]): alarms to create
 
         Returns:
-            tuple[Iterable[MetricAlarmParam], list[str], list[str]]: a tuple of alarms to create,
+            tuple[Iterable[AlarmProps], list[str], list[str]]: a tuple of alarms to create,
                                                                      alarms to keep and alarms to delete
         """
-        current_alarms = self._get_current_alarms(self.config["globals"]["alarm"]["alarm_name_prefix"])
+        alarm_name_prefix = self.config["globals"]["alarm"]["alarm_name_prefix"]
+        required_alarms = list(self._get_required_alarm_params(alarm_name_prefix, alarm_params))
+        current_alarms = self._get_current_alarms(alarm_name_prefix)
         current_alarm_names = {alm["AlarmName"] for alm in current_alarms}
-        required_alarm_names = {alm["AlarmName"] for alm in alarm_params}
+        required_alarm_names = {alm["AlarmName"] for alm in required_alarms}
 
-        need_to_create = [alm for alm in alarm_params if alm["AlarmName"] not in current_alarm_names]
+        need_to_create = [alm for alm in required_alarms if alm["AlarmName"] not in current_alarm_names]
+        no_update = [alm for alm in required_alarms if alm["AlarmName"] in current_alarm_names]
         need_to_delete = current_alarm_names.difference(required_alarm_names)
-        no_update = current_alarm_names.difference(need_to_delete)
 
-        return (need_to_create, list(no_update), list(need_to_delete))
+        return (need_to_create, no_update, list(need_to_delete))
+
+    def _get_required_alarm_params(
+        self, alarm_name_prefix: str, alarm_params: Iterable[MetricAlarmParam]
+    ) -> Iterable[AlarmProps]:
+        for alm in alarm_params:
+            resource_name = alm["TargetResource"]["ResourceName"]
+            alarm_props = alm["AlarmProps"]
+            alarm_props["AlarmName"] = f"{alarm_name_prefix}{resource_name}-{alarm_props['MetricName']}"
+            alarm_props["AlarmDescription"] = f"Metric Alarm for `{alarm_props['MetricName']}` of {resource_name}"
+
+            yield alarm_props
 
     def _get_current_alarms(self, alarm_name_prefix: str) -> Iterable:
         token = ""
@@ -76,22 +80,20 @@ class AlarmHandler:
                 break
 
     def update_alarms(
-        self, to_create: Iterable[MetricAlarmParam], to_delete: list[str], additional_alarm_actions: list[str]
+        self, to_create: Iterable[AlarmProps], to_delete: list[str], additional_alarm_actions: list[str]
     ) -> None:
         """Updates alarms with given changes
 
         Args:
-            to_create (Iterable[MetricAlarmParam]): alarms to create
+            to_create (Iterable[AlarmProps]): alarms to create
             to_delete (list[str]): alarms to delete
             additional_alarm_actions (list[str]): alarm actions for created alarms
         """
         self._create_alarms(to_create, additional_alarm_actions)
         self._delete_alarms(to_delete)
 
-    def _create_alarms(self, alarm_params: Iterable[MetricAlarmParam], additional_alarm_actions: list[str]) -> None:
+    def _create_alarms(self, alarm_params: Iterable[AlarmProps], additional_alarm_actions: list[str]) -> None:
         common_param = self.config["globals"]["alarm"]["default_alarm_params"]
-        # if default_alarm_param:
-        #     common_param = common_param | default_alarm_param
 
         # alarm actions
         alarm_notif_distinations = self.config["globals"]["alarm"]["alarm_actions"] + additional_alarm_actions

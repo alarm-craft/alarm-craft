@@ -61,17 +61,12 @@ def test_inherit_metrics_provider(mocker: MockerFixture, target_resource_type, s
         arn (str): arn
         dimensions (list): alarm dimensions
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
+    resource_name = "test1"
     alarm_metric_name = "NumOfTestFailure"
     config = {
-        "globals": {
-            "alarm": {
-                "alarm_name_prefix": "",
-                "alarm_actions": [],
-            },
-        },
         "resources": {
             service_name: {
                 "target_resource_type": target_resource_type,
@@ -92,8 +87,9 @@ def test_inherit_metrics_provider(mocker: MockerFixture, target_resource_type, s
 
     alarms = list(get_target_metrics(config))
     assert len(alarms) == 1
-    assert alarms[0]["MetricName"] == alarm_metric_name
-    assert alarms[0]["Dimensions"] == dimensions
+    assert alarms[0]["TargetResource"]["ResourceName"] == resource_name
+    assert alarms[0]["AlarmProps"]["MetricName"] == alarm_metric_name
+    assert alarms[0]["AlarmProps"]["Dimensions"] == dimensions
 
 
 @pytest.mark.parametrize("target_resource_type, service_name, arn, dimensions", _test_params())
@@ -109,17 +105,11 @@ def test_inherit_metrics_provider_no_match_pattern(
         arn (str): arn
         dimensions (list): alarm dimensions
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     alarm_metric_name = "NumOfTestFailure"
     config = {
-        "globals": {
-            "alarm": {
-                "alarm_name_prefix": "",
-                "alarm_actions": [],
-            },
-        },
         "resources": {
             service_name: {
                 "target_resource_type": target_resource_type,
@@ -151,15 +141,14 @@ def test_get_target_metrics(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    alarm_prefix = "alarm-"
     resource_name = "test-225"
-    service_config = {}
+    resource_configs = {}
     mock_result = {}
     expects: list[dict] = []
     for target_resource_type, service_name, arn, dimensions in _test_params(resource_name):
         namespace = "AWS/" + service_name
         metric_name = "TestMetric"
-        service_config[service_name] = {
+        resource_configs[service_name] = {
             "target_resource_type": target_resource_type,
             "alarm": {
                 "namespace": namespace,
@@ -171,14 +160,18 @@ def test_get_target_metrics(mocker: MockerFixture):
         ]
         expects.append(
             {
-                "AlarmName": f"{alarm_prefix}{resource_name}-{metric_name}",
-                "Namespace": namespace,
-                "MetricName": metric_name,
-                "Dimensions": dimensions,
+                "TargetResource": {
+                    "ResourceName": resource_name,
+                },
+                "AlarmProps": {
+                    "Namespace": namespace,
+                    "MetricName": metric_name,
+                    "Dimensions": dimensions,
+                },
             }
         )
 
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     def _mock_do_get_resources(*args, **kwargs):
@@ -188,16 +181,11 @@ def test_get_target_metrics(mocker: MockerFixture):
     mock_get_resources.side_effect = _mock_do_get_resources
 
     config = {
-        "globals": {
-            "alarm": {
-                "alarm_name_prefix": alarm_prefix,
-                "alarm_actions": [],
-            },
-        },
-        "resources": service_config,
+        "resources": resource_configs,
     }
 
     alarm_params = list(get_target_metrics(config))
     for i, expected_param in enumerate(expects):
-        for k, v in expected_param.items():
-            assert alarm_params[i][k] == v  # type: ignore
+        assert expected_param["TargetResource"] == alarm_params[i]["TargetResource"]
+        for k, v in expected_param["AlarmProps"].items():
+            assert alarm_params[i]["AlarmProps"][k] == v  # type: ignore

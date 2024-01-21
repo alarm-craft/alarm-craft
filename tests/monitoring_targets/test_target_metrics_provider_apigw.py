@@ -2,6 +2,8 @@ import boto3
 import pytest
 from moto import mock_apigateway
 
+from alarm_craft.models import AlarmProps, MetricAlarmParam, TargetResource
+
 
 @pytest.fixture()
 def restapi():
@@ -12,7 +14,12 @@ def restapi():
     """
     with mock_apigateway():
         apigateway_client = boto3.client("apigateway")
-        apigateway_client.create_rest_api(name="restapi-1", tags={"tagkey1": "tagvalue1"})
+        apigateway_client.create_rest_api(
+            name="restapi-1",
+            tags={
+                "tagkey1": "tagvalue1",
+            },
+        )
         apigateway_client.create_rest_api(
             name="restapi-2",
             tags={
@@ -38,15 +45,14 @@ def test_apigateway_provider_basic():
     Args:
         mocker (MockerFixture): mocker
     """
-    from alarm_craft.monitoring_targets import ApiGatewayMetricsProvider, MetricAlarmParam
+    from alarm_craft.monitoring_targets.target_metrics_provider_apigw import ApiGatewayMetricsProvider
 
-    alarm_name_prefix = "test_monitoring_targets_apigateway-"
     alarm_namespace = "AWS/APIGateway"
     alarm_metric_name = "TestsCount"
-    resource_name = "restapi-3"
+    resource_name1 = "restapi-1"
+    resource_name2 = "restapi-2"
+    resource_name3 = "restapi-3"
     config = _config(
-        target_resource_tags={"tagkey3": "tagvalue3"},
-        alarm_name_prefix=alarm_name_prefix,
         alarm_namespace=alarm_namespace,
         alarm_metrics=[alarm_metric_name],
     )
@@ -56,11 +62,34 @@ def test_apigateway_provider_basic():
 
     assert alarms == [
         MetricAlarmParam(
-            AlarmName=f"{alarm_name_prefix}{resource_name}-{alarm_metric_name}",
-            AlarmDescription=f"Metric Alarm for `{alarm_metric_name}` of {resource_name}",
-            MetricName=alarm_metric_name,
-            Namespace=alarm_namespace,
-            Dimensions=[{"Name": "ApiName", "Value": resource_name}],
+            TargetResource=TargetResource(
+                ResourceName=resource_name1,
+            ),
+            AlarmProps=AlarmProps(
+                MetricName=alarm_metric_name,
+                Namespace=alarm_namespace,
+                Dimensions=[{"Name": "ApiName", "Value": resource_name1}],
+            ),
+        ),
+        MetricAlarmParam(
+            TargetResource=TargetResource(
+                ResourceName=resource_name2,
+            ),
+            AlarmProps=AlarmProps(
+                MetricName=alarm_metric_name,
+                Namespace=alarm_namespace,
+                Dimensions=[{"Name": "ApiName", "Value": resource_name2}],
+            ),
+        ),
+        MetricAlarmParam(
+            TargetResource=TargetResource(
+                ResourceName=resource_name3,
+            ),
+            AlarmProps=AlarmProps(
+                MetricName=alarm_metric_name,
+                Namespace=alarm_namespace,
+                Dimensions=[{"Name": "ApiName", "Value": resource_name3}],
+            ),
         ),
     ]
 
@@ -115,7 +144,7 @@ def test_apigateway_provider_tag_filter(tags, resource_names):
         tags (dict): tags
         resource_names (list[str]): list of resource names
     """
-    from alarm_craft.monitoring_targets import ApiGatewayMetricsProvider
+    from alarm_craft.monitoring_targets.target_metrics_provider_apigw import ApiGatewayMetricsProvider
 
     alarm_metric_name = "TestsCount"
     config = _config(
@@ -126,7 +155,7 @@ def test_apigateway_provider_tag_filter(tags, resource_names):
     target = ApiGatewayMetricsProvider(config, "apigateway")
     alarms = list(target.get_metric_alarms())
 
-    assert [f"{r}-{alarm_metric_name}" for r in resource_names] == [a["AlarmName"] for a in alarms]
+    assert resource_names == [a["TargetResource"]["ResourceName"] for a in alarms]
 
 
 @pytest.mark.usefixtures("restapi")
@@ -134,41 +163,37 @@ def test_apigateway_provider_through_get_target_metrics():
     """Test for ApiGatewayMetricsProvider through get_target_metrics()"""
     from alarm_craft.monitoring_targets import get_target_metrics
 
-    config = _config(target_resource_type="apigateway:restapi", alarm_metrics=["MyMetric"])
+    config = {
+        "resources": {
+            "apigateway": _config(
+                target_resource_type="apigateway:restapi",
+                alarm_metrics=["MyMetric"],
+            )
+        }
+    }
+
     alarm_params = list(get_target_metrics(config))
 
     expects = [
-        ("restapi-1-MyMetric", "MyMetric"),
-        ("restapi-2-MyMetric", "MyMetric"),
-        ("restapi-3-MyMetric", "MyMetric"),
+        ("restapi-1", "MyMetric"),
+        ("restapi-2", "MyMetric"),
+        ("restapi-3", "MyMetric"),
     ]
-    actuals = [(a["AlarmName"], a["MetricName"]) for a in alarm_params]
+    actuals = [(a["TargetResource"]["ResourceName"], a["AlarmProps"]["MetricName"]) for a in alarm_params]
     assert expects == actuals
 
 
 def _config(
-    alarm_name_prefix: str = "",
     target_resource_type: str = "",
     target_resource_tags: dict[str, str] = {},
     alarm_namespace: str = "AWS/MyService",
     alarm_metrics: list[str] = ["NumOfTestFailures"],
 ):
     return {
-        "globals": {
-            "alarm": {
-                "alarm_name_prefix": alarm_name_prefix,
-                "alarm_actions": [],
-                "default_alarm_params": {},
-            },
-        },
-        "resources": {
-            "apigateway": {
-                "target_resource_type": target_resource_type,
-                "target_resource_tags": target_resource_tags,
-                "alarm": {
-                    "namespace": alarm_namespace,
-                    "metrics": alarm_metrics,
-                },
-            },
+        "target_resource_type": target_resource_type,
+        "target_resource_tags": target_resource_tags,
+        "alarm": {
+            "namespace": alarm_namespace,
+            "metrics": alarm_metrics,
         },
     }

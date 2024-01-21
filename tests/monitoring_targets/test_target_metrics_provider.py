@@ -3,7 +3,10 @@ from typing import Mapping, Sequence
 import pytest
 from pytest_mock import MockerFixture
 
-from alarm_craft.monitoring_targets import MetricAlarmParam, ResourceGroupsTaggingAPITargetMetricsProviderBase
+from alarm_craft.models import AlarmProps, MetricAlarmParam, TargetResource
+from alarm_craft.monitoring_targets.target_metrics_provider_rgta import (
+    ResourceGroupsTaggingAPITargetMetricsProviderBase,
+)
 
 
 class MyTestMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
@@ -33,17 +36,14 @@ def test_base_provider(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
-    alarm_name_prefix = "testing-cw-metric-alarm-12345-"
     alarm_namespace = "AWS/MyService"
     alarm_metric_name = "NumOfTestFailure"
     resource_name1 = "my-test-1"
     resource_name2 = "my-test-2"
-    config = _config(
-        alarm_name_prefix=alarm_name_prefix, alarm_namespace=alarm_namespace, alarm_metrics=[alarm_metric_name]
-    )
+    config = _config(alarm_namespace=alarm_namespace, alarm_metrics=[alarm_metric_name])
 
     mock_get_resources.return_value = {
         "ResourceTagMappingList": [
@@ -57,18 +57,20 @@ def test_base_provider(mocker: MockerFixture):
 
     assert alarms == [
         MetricAlarmParam(
-            AlarmName=f"{alarm_name_prefix}{resource_name1}-{alarm_metric_name}",
-            AlarmDescription=f"Metric Alarm for `{alarm_metric_name}` of {resource_name1}",
-            MetricName=alarm_metric_name,
-            Namespace=alarm_namespace,
-            Dimensions=[{"Name": "MyTestName", "Value": resource_name1}],
+            TargetResource=TargetResource(ResourceName=resource_name1),
+            AlarmProps=AlarmProps(
+                MetricName=alarm_metric_name,
+                Namespace=alarm_namespace,
+                Dimensions=[{"Name": "MyTestName", "Value": resource_name1}],
+            ),
         ),
         MetricAlarmParam(
-            AlarmName=f"{alarm_name_prefix}{resource_name2}-{alarm_metric_name}",
-            AlarmDescription=f"Metric Alarm for `{alarm_metric_name}` of {resource_name2}",
-            MetricName=alarm_metric_name,
-            Namespace=alarm_namespace,
-            Dimensions=[{"Name": "MyTestName", "Value": resource_name2}],
+            TargetResource=TargetResource(ResourceName=resource_name2),
+            AlarmProps=AlarmProps(
+                MetricName=alarm_metric_name,
+                Namespace=alarm_namespace,
+                Dimensions=[{"Name": "MyTestName", "Value": resource_name2}],
+            ),
         ),
     ]
 
@@ -102,7 +104,7 @@ def test_base_provider_call_api(mocker: MockerFixture, resource_type: str, resou
         resource_tags (_type_): _description_
         converted_tag_expression (_type_): _description_
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     config = _config(target_resource_type=resource_type, target_resource_tags=resource_tags)
@@ -123,18 +125,15 @@ def test_base_provider_with_resource_name_pattern(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
-    alarm_name_prefix = "testing-cw-metric-alarm-12345-"
     alarm_namespace = "AWS/MyService"
     alarm_metric_name = "NumOfTestFailure"
     pattern = "^test-(red|blue)-(bird|cat)"
 
-    config = _config(
-        alarm_name_prefix=alarm_name_prefix, alarm_namespace=alarm_namespace, alarm_metrics=[alarm_metric_name]
-    )
-    config["resources"]["myservice"]["target_resource_name_pattern"] = pattern
+    config = _config(alarm_namespace=alarm_namespace, alarm_metrics=[alarm_metric_name])
+    config["target_resource_name_pattern"] = pattern
 
     resource_name1 = "test-red-dog-0001"
     resource_name2 = "test-blue-cat-0002"  # this is only the one match the pattern
@@ -156,7 +155,7 @@ def test_base_provider_with_resource_name_pattern(mocker: MockerFixture):
     target = MyTestMetricsProvider(config, "myservice")
     result = list(target.get_metric_alarms())
     assert len(result) == 1
-    assert resource_name2 in result[0]["AlarmName"]
+    assert resource_name2 in result[0]["TargetResource"]["ResourceName"]
 
 
 def test_base_provider_multiple_metrics(mocker: MockerFixture):
@@ -165,7 +164,7 @@ def test_base_provider_multiple_metrics(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     alarm_metric_name1 = "NumOfTestFailure"
@@ -183,9 +182,9 @@ def test_base_provider_multiple_metrics(mocker: MockerFixture):
     alarms = list(target.get_metric_alarms())
     assert len(alarms) == 2
     assert [
-        (f"{resource_name1}-{alarm_metric_name1}", alarm_metric_name1),
-        (f"{resource_name1}-{alarm_metric_name2}", alarm_metric_name2),
-    ] == [(a["AlarmName"], a["MetricName"]) for a in alarms]
+        (resource_name1, alarm_metric_name1),
+        (resource_name1, alarm_metric_name2),
+    ] == [(a["TargetResource"]["ResourceName"], a["AlarmProps"]["MetricName"]) for a in alarms]
 
 
 def test_base_provider_optional_config_key(mocker: MockerFixture):
@@ -194,21 +193,21 @@ def test_base_provider_optional_config_key(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     target_resource_type = "type1"
     config = {
-        "resources": {
-            "test": {
-                "target_resource_type": target_resource_type,
-            },
+        "target_resource_type": target_resource_type,
+        "alarm": {
+            "namespace": "",
+            "metrics": [],
         },
     }
 
     mock_get_resources.return_value = {"ResourceTagMappingList": []}
 
-    target = MyTestMetricsProvider(config, "test")
+    target = MyTestMetricsProvider(config, "test")  # type: ignore
     assert len(list(target.get_metric_alarms())) == 0
 
     mock_get_resources.assert_called_once_with(PaginationToken="", ResourceTypeFilters=[target_resource_type])
@@ -220,7 +219,7 @@ def test_param_overrides(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     alarm_metric_name1 = "NumOfTestFailure"
@@ -245,7 +244,7 @@ def test_param_overrides(mocker: MockerFixture):
             "ComparisonOperator": "GreaterThanUpperThreshold",
         },
     }
-    config["resources"]["myservice"]["alarm"]["alarm_param_overrides"] = overrides
+    config["alarm"]["alarm_param_overrides"] = overrides
 
     mock_get_resources.return_value = {
         "ResourceTagMappingList": [
@@ -260,28 +259,41 @@ def test_param_overrides(mocker: MockerFixture):
 
     expects: list[dict] = [
         {
-            "AlarmName": f"{resource_name1}-{alarm_metric_name1}",
-            "MetricName": alarm_metric_name1,
-            "Threshold": 3600,
-            "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            "TargetResource": {
+                "ResourceName": resource_name1,
+            },
+            "AlarmProps": {
+                "MetricName": alarm_metric_name1,
+                "Threshold": 3600,
+                "ComparisonOperator": "GreaterThanOrEqualToThreshold",
+            },
         },
         {
-            "AlarmName": f"{resource_name1}-{alarm_metric_name2}",
-            "MetricName": alarm_metric_name2,
-            "Statistic": "Average",
-            "Period": 24,
-            "EvaluationPeriods": 3,
-            "TreatMissingData": "ignore",
+            "TargetResource": {
+                "ResourceName": resource_name1,
+            },
+            "AlarmProps": {
+                "MetricName": alarm_metric_name2,
+                "Statistic": "Average",
+                "Period": 24,
+                "EvaluationPeriods": 3,
+                "TreatMissingData": "ignore",
+            },
         },
         {
-            "AlarmName": f"{resource_name1}-{alarm_metric_name3}",
-            "MetricName": alarm_metric_name3,
+            "TargetResource": {
+                "ResourceName": resource_name1,
+            },
+            "AlarmProps": {
+                "MetricName": alarm_metric_name3,
+            },
         },
     ]
 
     for i in range(num_of_results):
-        for k, v in expects[i].items():
-            assert alarms[i].get(k) == v
+        assert expects[i]["TargetResource"] == alarms[i]["TargetResource"]
+        for k, v in expects[i]["AlarmProps"].items():
+            assert alarms[i]["AlarmProps"].get(k) == v
 
 
 def test_api_pagenation(mocker: MockerFixture):
@@ -290,7 +302,7 @@ def test_api_pagenation(mocker: MockerFixture):
     Args:
         mocker (MockerFixture): mocker
     """
-    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.boto3")
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
     # todo:
@@ -323,28 +335,16 @@ def test_api_pagenation(mocker: MockerFixture):
 
 
 def _config(
-    alarm_name_prefix: str = "",
     target_resource_type: str = "",
     target_resource_tags: dict[str, str] = {},
     alarm_namespace: str = "AWS/MyService",
     alarm_metrics: list[str] = ["NumOfTestFailures"],
 ):
     return {
-        "globals": {
-            "alarm": {
-                "alarm_name_prefix": alarm_name_prefix,
-                "alarm_actions": [],
-                "default_alarm_params": {},
-            },
-        },
-        "resources": {
-            "myservice": {
-                "target_resource_type": target_resource_type,
-                "target_resource_tags": target_resource_tags,
-                "alarm": {
-                    "namespace": alarm_namespace,
-                    "metrics": alarm_metrics,
-                },
-            },
+        "target_resource_type": target_resource_type,
+        "target_resource_tags": target_resource_tags,
+        "alarm": {
+            "namespace": alarm_namespace,
+            "metrics": alarm_metrics,
         },
     }

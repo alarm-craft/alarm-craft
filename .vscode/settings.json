@@ -7,5 +7,6 @@
     "editor.formatOnSave": true,
     "editor.codeActionsOnSave": {
         "source.organizeImports": true
-    }
+    },
+    "mypy-type-checker.importStrategy": "fromEnvironment"
 }
