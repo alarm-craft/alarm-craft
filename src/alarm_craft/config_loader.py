@@ -1,7 +1,9 @@
 import json
-from typing import Dict, List, Optional, Union
+from os import path
+from typing import Dict, List, Literal, Optional, TypedDict, Union
 
 import jsonschema
+import yaml
 
 from . import config_schema
 
@@ -11,7 +13,22 @@ ConfigList = List[ConfigElement]
 ConfigValue = Dict[str, ConfigElement]
 
 # constants
-DEFAULT_CONFIG_FILE = "alarm-config.json"
+DEFAULT_CONFIG_FILES = [
+    "alarm-config.yaml",
+    "alarm-config.yml",
+    "alarm-config.json",
+]
+
+
+class ConfigFile(TypedDict):
+    """Config File
+
+    Args:
+        TypedDict (_type_): typed dict
+    """
+
+    FilePath: str
+    Type: Literal["json", "yaml"]
 
 
 def load(file_path: Optional[str]) -> ConfigValue:
@@ -23,11 +40,40 @@ def load(file_path: Optional[str]) -> ConfigValue:
     Returns:
         ConfigValue: config dict
     """
-    with open(file_path or DEFAULT_CONFIG_FILE, "r") as f:
-        config = json.load(f)
+    config_file = _resolve_file_path(file_path)
+    with open(config_file["FilePath"], "r") as f:
+        if config_file["Type"] == "json":
+            config = json.load(f)
+        else:
+            config = yaml.safe_load(f)
     jsonschema.validate(config, config_schema.get_schema())
 
     return _merge_configs(config)
+
+
+def _config_file(config_file_path: str) -> ConfigFile:
+    conf: ConfigFile = {
+        "FilePath": config_file_path,
+        "Type": "json",  # default
+    }
+    if config_file_path.endswith("yaml") or config_file_path.endswith("yml"):
+        conf["Type"] = "yaml"
+
+    return conf
+
+
+def _resolve_file_path(file_path: Optional[str]) -> ConfigFile:
+    if file_path:
+        if path.exists(file_path):
+            return _config_file(file_path)
+        else:
+            raise FileNotFoundError(file_path)
+    else:
+        for file_name in DEFAULT_CONFIG_FILES:
+            if path.exists(file_name):
+                return _config_file(file_name)
+
+        raise ValueError("config file not found. locate `alarm-config.yaml` or specify `-c your-config.yaml`")
 
 
 def _merge_configs(config: ConfigValue) -> ConfigValue:
