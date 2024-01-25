@@ -1,8 +1,10 @@
 import json
+import os
 from pathlib import Path
 from typing import Dict
 
 import pytest
+import yaml
 
 from alarm_craft import config_loader
 
@@ -59,15 +61,16 @@ def _missing_conf_message_data():
             }
         },
     ]
+    # note: these portions of error messages may modified in a new version of libs.
     words = [
         "resources",
-        "enough",  # `resources` must have 1 or more key(s)
+        "non-empty",  # `resources` must have 1 or more key(s)
         "target_resource_type",
         "alarm",
         "namespace",
         "metrics",
-        "enough",  # `target_resource_tags`` must have 1 or more key(s)
-        "too short",  # `metrics` must have 1 or more str(s)
+        "non-empty",  # `target_resource_tags`` must have 1 or more key(s)
+        "non-empty",  # `metrics` must have 1 or more str(s)
     ]
 
     return zip(conf, words)
@@ -221,3 +224,100 @@ def test_merge_global_tag_conf(tmp_path: Path):
         "tag1": "value1",
         "tag2": "value2",
     }
+
+
+@pytest.mark.parametrize("config_file", ["config.yaml", "config.yml"])
+def test_conf_in_yaml(tmp_path: Path, config_file: str):
+    """Tests yaml config"""
+    conf = {
+        "globals": config_loader.default_global_config(),
+        "resources": {
+            "myservice1": {
+                "target_resource_tags": {"tag1": "value1"},
+                "target_resource_type": "lambda:function",
+                "alarm": {
+                    "namespace": "",
+                    "metrics": [""],
+                },
+            },
+            "myservice2": {
+                "target_resource_tags": {"tag2": "value2"},
+                "target_resource_type": "lambda:function",
+                "alarm": {
+                    "namespace": "",
+                    "metrics": [""],
+                },
+            },
+            "myservice12": {
+                "target_resource_tags": {"tag1": "value1", "tag2": "value2"},
+                "target_resource_type": "lambda:function",
+                "alarm": {
+                    "namespace": "",
+                    "metrics": [""],
+                },
+            },
+        },
+    }
+
+    config_path = tmp_path / config_file
+
+    with open(config_path, "w") as f:
+        yaml.safe_dump(conf, f)
+
+    loaded_conf = config_loader.load(str(config_path))
+    assert conf == loaded_conf
+
+
+def test_default_conf_filename(tmp_path: Path):
+    """Tests resolving default config filename"""
+
+    def _conf(filename: str):
+        return {
+            "globals": config_loader.default_global_config(),
+            "resources": {
+                "myservice": {
+                    "target_resource_type": "lambda:function",
+                    "target_resource_tags": {"filename": filename},
+                    "alarm": {
+                        "namespace": "",
+                        "metrics": [""],
+                    },
+                },
+            },
+        }
+
+    prioritized_filenames: list[str] = [
+        "alarm-config.yaml",
+        "alarm-config.yml",
+        "alarm-config.json",
+    ]  # prioritized order
+
+    os.chdir(tmp_path)
+
+    for filename in prioritized_filenames:
+        conf = _conf(filename)
+
+        config_path = tmp_path / filename
+        with open(config_path, "w") as f:
+            if filename.endswith(".json"):
+                json.dump(conf, f)
+            else:
+                yaml.safe_dump(conf, f)
+
+    for filename in prioritized_filenames:
+        # load without filename
+        loaded_conf = config_loader.load(None)
+        assert loaded_conf["resources"]["myservice"]["target_resource_tags"]["filename"] == filename  # type: ignore
+        os.remove(tmp_path / filename)
+
+
+def test_file_not_found():
+    """Tests config file not found"""
+    with pytest.raises(FileNotFoundError) as err:
+        f = "no_such_config.json"
+        config_loader.load(f)
+        assert f in err.value
+
+    with pytest.raises(ValueError) as err:
+        config_loader.load(None)
+        assert "-c" in err.value

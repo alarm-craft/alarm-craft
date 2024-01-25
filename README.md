@@ -1,4 +1,4 @@
-# AWS CloudWatch Alarm Craft
+# `alarm-craft` for AWS CloudWatch Alarms
 
 [![Python - Version](https://img.shields.io/python/required-version-toml?tomlFilePath=https%3A%2F%2Fraw.githubusercontent.com%2Fryo-murai%2Falarm-craft%2Fmain%2Fpyproject.toml&logo=python)](https://www.python.org/downloads/)
 [![PyPI - Version](https://img.shields.io/pypi/v/alarm-craft)](https://pypi.org/project/alarm-craft/)
@@ -25,23 +25,19 @@ With modern architectures such as serverless and microservices, the number of re
    ```bash
    pip install alarm-craft
    ```
-1. Create a json file like below and save it as `config.json`
-   ```json
-   {
-     "resources": {
-       "lambda": {
-         "target_resource_type": "lambda:function",
-         "alarm": {
-           "namespace": "AWS/Lambda",
-           "metrics": ["Errors"]
-         }
-       }
-     }
-   }
+1. Create a json file like below and save it as `alarm-config.yaml`
+   ```yaml
+   resources:
+     lambda:
+       target_resource_type: "lambda:function"
+       alarm:
+         namespace: "AWS/Lambda"
+         metrics:
+           - Errors
    ```
 1. Execute the tool.
    ```bash
-   alarm-craft -c config.json
+   alarm-craft
    ```
    By this execution, the `alarm-craft` creates Cloudwatch Alarms to detect `Errors` in all Lambda functions.
 

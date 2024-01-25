@@ -590,7 +590,7 @@ def _config(alarm_name_prefix: str = DEFAULT_ALARM_NAME_PREFIX, alarm_actions: l
             "alarm": {
                 "alarm_name_prefix": alarm_name_prefix,
                 "alarm_actions": alarm_actions,
-                "default_alarm_params": DEFAULT_ALARM_PARAMS,
+                "default_alarm_params": DEFAULT_ALARM_PARAMS.copy(),
             },
             "api_call_intervals_in_millis": 0,
         },
