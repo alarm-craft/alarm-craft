@@ -1,0 +1,94 @@
+globals:
+  resource_filter:
+    target_resource_name_pattern: ^myproj-(dev|prod)-
+    target_resource_tags:
+      Owner: mydivision
+      myproj:observedBy: alarm-craft
+
+  alarm:
+    alarm_actions: []
+    alarm_name_prefix: myproj-cw-metric-alarm-autogen-
+    default_alarm_params:
+      Statistic: Sum
+      Period: 60
+      EvaluationPeriods: 1
+      Threshold: 1
+      ComparisonOperator: GreaterThanOrEqualToThreshold
+      TreatMissingData: notBreaching
+    alarm_tagging:
+      division: alpha
+
+  api_call_intervals_in_millis: 340
+
+resources:
+
+  lambda:
+    target_resource_type: lambda:function
+    alarm:
+      namespace: AWS/Lambda
+      metrics:
+      - Errors
+      - Throttled
+
+  apigateway:
+    target_resource_type: apigateway:restapi
+    alarm:
+      namespace: AWS/ApiGateway
+      metrics:
+      - 5XXError
+
+  eventbridge:
+    target_resource_type: events:rule
+    alarm:
+      namespace: AWS/Events
+      metrics:
+      - FailedInvocations
+      - ThrottledRules
+
+  sns:
+    target_resource_type: sns:topic
+    alarm:
+      namespace: AWS/SNS
+      metrics:
+      - NumberOfNotificationsFailed
+
+  sqs-main-queue:
+    target_resource_type: sqs:queue
+    target_resource_tags:
+      alarm-craft:sqs:main-queue: 'true'
+    alarm:
+      namespace: AWS/SQS
+      metrics:
+      - ApproximateAgeOfOldestMessage
+      - ApproximateNumberOfMessagesVisible
+      alarm_param_overrides:
+        ApproximateAgeOfOldestMessage:
+          ComparisonOperator: GreaterThanOrEqualToThreshold
+          Threshold: 3600
+        ApproximateNumberOfMessagesVisible:
+          ComparisonOperator: GreaterThanOrEqualToThreshold
+          Threshold: 500
+
+  sqs-dead-letter-queue:
+    target_resource_type: sqs:queue
+    target_resource_tags:
+      alarm-craft:sqs:dlq: 'true'
+    alarm:
+      namespace: AWS/SQS
+      metrics:
+      - ApproximateNumberOfMessagesVisible
+      - ApproximateAgeOfOldestMessage
+      alarm_param_overrides:
+        ApproximateAgeOfOldestMessage:
+          ComparisonOperator: GreaterThanOrEqualToThreshold
+          Threshold: 864000
+
+  stepfunctions:
+    target_resource_type: states:stateMachine
+    alarm:
+      namespace: AWS/States
+      metrics:
+      - ExecutionsFailed
+      - ExecutionsTimedOut
+      - ExecutionsAborted
+      - ExecutionThrottled

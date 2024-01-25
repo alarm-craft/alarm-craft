@@ -1,0 +1,7 @@
+resources:
+  lambda:
+    target_resource_type: lambda:function
+    alarm:
+      namespace: AWS/Lambda
+      metrics:
+      - Errors
