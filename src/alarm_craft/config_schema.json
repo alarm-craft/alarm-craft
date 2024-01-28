@@ -79,16 +79,7 @@
             "description": "configs for target resource",
             "properties": {
                 "target_resource_type": {
-                    "type": "string",
-                    "description": "type of target resource",
-                    "enum": [
-                        "lambda:function",
-                        "states:stateMachine",
-                        "apigateway:restapi",
-                        "sns:topic",
-                        "sqs:queue",
-                        "events:rule"
-                    ]
+                    "$ref": "#/definitions/target_resource_type"
                 },
                 "target_resource_name_pattern": {
                     "type": "string",
@@ -181,6 +172,18 @@
             },
             "minProperties": 1,
             "additionalProperties": false
+        },
+        "target_resource_type": {
+            "type": "string",
+            "description": "type of target resource",
+            "enum": [
+                "lambda:function",
+                "states:stateMachine",
+                "apigateway:restapi",
+                "sns:topic",
+                "sqs:queue",
+                "events:rule"
+            ]
         }
     }
 }
