@@ -3,7 +3,7 @@ from typing import Callable, Iterable, Mapping, Sequence
 
 import boto3
 
-from .target_metrics_provider import TargetMetricsProviderBase
+from .target_metrics_provider import TargetMetricsProviderBase, metric_provider
 
 
 class ResourceGroupsTaggingAPITargetMetricsProviderBase(TargetMetricsProviderBase[str]):
@@ -85,6 +85,7 @@ class ResourceGroupsTaggingAPITargetMetricsProviderBase(TargetMetricsProviderBas
 #
 
 
+@metric_provider("lambda:function")
 class LambdaMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
     """Lambda Metric Provider"""
 
@@ -102,6 +103,7 @@ class LambdaMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
         return [{"Name": "FunctionName", "Value": name}]
 
 
+@metric_provider("states:stateMachine")
 class SfnMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
     """StepFunctions Metrics Provider"""
 
@@ -118,6 +120,7 @@ class SfnMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
         return [{"Name": "StateMachineArn", "Value": arn}]
 
 
+@metric_provider("sns:topic")
 class SnsMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
     """SNS Metrics Provider"""
 
@@ -146,6 +149,7 @@ class SnsMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
         return [{"Name": "TopicName", "Value": name}]
 
 
+@metric_provider("sqs:queue")
 class SqsMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
     """SQS Metric Provider"""
 
@@ -174,6 +178,7 @@ class SqsMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
         return [{"Name": "QueueName", "Value": name}]
 
 
+@metric_provider("events:rule")
 class EventBridgeMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
     """EventBridge Metrics Provider"""
 

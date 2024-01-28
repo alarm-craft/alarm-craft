@@ -2,9 +2,10 @@ from typing import Iterable, Mapping, Optional, Sequence
 
 import boto3
 
-from .target_metrics_provider import TargetMetricsProviderBase
+from .target_metrics_provider import TargetMetricsProviderBase, metric_provider
 
 
+@metric_provider("apigateway:restapi")
 class ApiGatewayMetricsProvider(TargetMetricsProviderBase[str]):
     """API Gateway Metrics Provider"""
 

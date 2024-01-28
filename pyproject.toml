@@ -64,4 +64,5 @@ env = [
   "AWS_SECURITY_TOKEN=testing",
   "AWS_SESSION_TOKEN=testing",
   "AWS_DEFAULT_REGION=ap-northeast-1",
+  "LOG_LEVEL=DEBUG",
 ]

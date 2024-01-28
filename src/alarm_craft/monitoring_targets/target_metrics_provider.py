@@ -1,16 +1,27 @@
 from abc import ABC, abstractmethod
-from typing import Any, Generic, Iterable, Mapping, Optional, Protocol, Sequence, TypeVar
+from typing import Any, Final, Generic, Iterable, Mapping, Optional, Sequence, TypeVar
 
 from alarm_craft.models import MetricAlarmParam, ResourceConfig
 
 
-class TargetMetricsProvider(Protocol):
+class TargetMetricsProvider(ABC):
     """Target Metrics Provider
 
     Args:
         Protocol (_type_): protocol
     """
 
+    def __init__(self, resource_config: ResourceConfig, resource_config_name: str):
+        """Constructor
+
+        Args:
+            resource_config (ResourceAlarmConfig): resource config dict
+            resource_config_name (str): key of the resource config
+        """
+        self.resource_config = resource_config
+        self.resource_config_name = resource_config_name
+
+    @abstractmethod
     def get_metric_alarms(self) -> Iterable[MetricAlarmParam]:
         """Gets metric alarms
 
@@ -23,23 +34,13 @@ class TargetMetricsProvider(Protocol):
 T = TypeVar("T")
 
 
-class TargetMetricsProviderBase(ABC, Generic[T]):
+class TargetMetricsProviderBase(TargetMetricsProvider, Generic[T]):
     """Target Metrics Provider Base
 
     Args:
         ABC (_type_): abstract class
         Generic (_type_): type
     """
-
-    def __init__(self, resource_config: ResourceConfig, resource_config_name: str):
-        """Constructor
-
-        Args:
-            resource_config (ResourceAlarmConfig): resource config dict
-            resource_config_name (str): key of the resource config
-        """
-        self.resource_config = resource_config
-        self.resource_config_name = resource_config_name
 
     def get_metric_alarms(self) -> Iterable[MetricAlarmParam]:
         """Gets metric alarms
@@ -136,3 +137,31 @@ class TargetMetricsProviderBase(ABC, Generic[T]):
             str: resource name
         """
         pass
+
+
+#
+# Decorator declaration
+#
+
+provider_module_name_prefix: Final[str] = __package__ + ".target_metrics_provider_"
+
+provider_class_name_postfix: Final[str] = "MetricsProvider"
+
+
+def metric_provider(resource_type: str):  # type: ignore
+    """Decorater for MetricProvider class.
+
+    Args:
+        resource_type (str): resource type
+    """
+
+    def _inner_decorator(provider_cls: type[TargetMetricsProvider]):  # type: ignore
+        # validation
+        assert provider_cls.__module__.startswith(provider_module_name_prefix)
+        assert provider_cls.__name__.endswith(provider_class_name_postfix)
+
+        # inject `resource_type` classmethod
+        setattr(provider_cls, "resource_type", resource_type)
+        return provider_cls
+
+    return _inner_decorator
