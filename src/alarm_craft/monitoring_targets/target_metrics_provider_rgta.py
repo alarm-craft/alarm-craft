@@ -102,6 +102,14 @@ class LambdaMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
         name = self.get_resource_name(arn)
         return [{"Name": "FunctionName", "Value": name}]
 
+    def get_default_namespace(self) -> str:
+        """Gets alarm namespace
+
+        Returns:
+            str: alarm namespace
+        """
+        return "AWS/Lambda"
+
 
 @metric_provider("states:stateMachine")
 class SfnMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
@@ -118,6 +126,14 @@ class SfnMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
             Sequence[Mapping[str, str]]: alarm dimensions
         """
         return [{"Name": "StateMachineArn", "Value": arn}]
+
+    def get_default_namespace(self) -> str:
+        """Gets alarm namespace
+
+        Returns:
+            str: alarm namespace
+        """
+        return "AWS/States"
 
 
 @metric_provider("sns:topic")
@@ -148,6 +164,14 @@ class SnsMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
         name = self.get_resource_name(arn)
         return [{"Name": "TopicName", "Value": name}]
 
+    def get_default_namespace(self) -> str:
+        """Gets alarm namespace
+
+        Returns:
+            str: alarm namespace
+        """
+        return "AWS/SNS"
+
 
 @metric_provider("sqs:queue")
 class SqsMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
@@ -177,6 +201,14 @@ class SqsMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
         name = self.get_resource_name(arn)
         return [{"Name": "QueueName", "Value": name}]
 
+    def get_default_namespace(self) -> str:
+        """Gets alarm namespace
+
+        Returns:
+            str: alarm namespace
+        """
+        return "AWS/SQS"
+
 
 @metric_provider("events:rule")
 class EventBridgeMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
@@ -205,3 +237,11 @@ class EventBridgeMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBa
         """
         name = self.get_resource_name(arn)
         return [{"Name": "RuleName", "Value": name}]
+
+    def get_default_namespace(self) -> str:
+        """Gets alarm namespace
+
+        Returns:
+            str: alarm namespace
+        """
+        return "AWS/Events"

@@ -29,6 +29,14 @@ class MyTestMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
         name = self.get_resource_name(arn)
         return [{"Name": "MyTestName", "Value": name}]
 
+    def get_default_namespace(self) -> str:
+        """Gets alarm namespace
+
+        Returns:
+            str: alarm namespace
+        """
+        return "AWS/MyService"
+
 
 def test_base_provider(mocker: MockerFixture):
     """Test for ResourceGroupsTaggingAPITargetMetricsProviderBase
