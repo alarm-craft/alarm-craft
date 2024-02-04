@@ -1,5 +1,5 @@
 import re
-from typing import Callable, Iterable, Mapping, Sequence
+from typing import Callable, Iterable, Mapping, Optional, Sequence
 
 import boto3
 
@@ -34,11 +34,7 @@ class ResourceGroupsTaggingAPITargetMetricsProviderBase(TargetMetricsProviderBas
                 tag_filters = [{"Key": k, "Values": [v]} for k, v in tags.items()]
                 request_param["TagFilters"] = tag_filters
 
-            # resource name pattern condition
-            if pattern:
-                filter_func = self._get_filter_by_resource_name_pattern(pattern)
-            else:
-                filter_func = ResourceGroupsTaggingAPITargetMetricsProviderBase._nofilter
+            filter_func = self.create_resource_filter(pattern)
 
             while True:
                 resp = resource_client.get_resources(**request_param)
@@ -66,6 +62,20 @@ class ResourceGroupsTaggingAPITargetMetricsProviderBase(TargetMetricsProviderBas
             str: resource name
         """
         return self.default_arn_pattern.sub("", arn, 1)
+
+    def create_resource_filter(self, pattern: Optional[str]) -> Callable[[str], bool]:
+        """Gets resource filter function
+
+        Args:
+            pattern (str): filter condition for resource name
+
+        Returns:
+            Callable[[str], bool]: function of predicate for resource name matches
+        """
+        if pattern:
+            return self._get_filter_by_resource_name_pattern(pattern)
+        else:
+            return ResourceGroupsTaggingAPITargetMetricsProviderBase._nofilter
 
     def _get_filter_by_resource_name_pattern(self, pattern: str) -> Callable[[str], bool]:
         regex = re.compile(pattern)
@@ -245,3 +255,53 @@ class EventBridgeMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBa
             str: alarm namespace
         """
         return "AWS/Events"
+
+
+@metric_provider("apigateway:apis")
+class ApiGatewayV2MetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
+    """API Gateway V2(HttpApi) Metrics Provider"""
+
+    # api stage ARN is like below
+    # "arn:aws:apigateway:ap-northeast-1::/apis/abcd1234fg/stages/$default"
+    arn_api_stage = re.compile("^arn:aws:apigateway:[^:]*::/apis/[^/]*/stages/.*")
+
+    def create_resource_filter(self, pattern: Optional[str]) -> Callable[[str], bool]:
+        """Creates filter with default one and filter stage ARNs"""
+        original_filter = super().create_resource_filter(pattern)
+
+        def composed_filter(arn: str) -> bool:
+            return original_filter(arn) and self.arn_api_stage.match(arn) is None
+
+        return composed_filter
+
+    def get_resource_name(self, arn: str) -> str:
+        """Gets resource name
+
+        Args:
+            arn (T): resource
+
+        Returns:
+            str: resource name
+        """
+        return self.arn_pattern_name_by_slash.sub("", arn, 1)
+
+    def dimensions(self, metric_name: str, arn: str) -> Sequence[Mapping[str, str]]:
+        """Gets alarm dimensions
+
+        Args:
+            metric_name (str): metric name
+            arn (T): resource
+
+        Returns:
+            Sequence[Mapping[str, str]]: alarm dimensions
+        """
+        api_id = self.get_resource_name(arn)
+        return [{"Name": "ApiId", "Value": api_id}]
+
+    def get_default_namespace(self) -> str:
+        """Gets alarm namespace
+
+        Returns:
+            str: alarm namespace
+        """
+        return "AWS/ApiGateway"
