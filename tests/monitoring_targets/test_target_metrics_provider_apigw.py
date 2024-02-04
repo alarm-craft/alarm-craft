@@ -4,6 +4,8 @@ from moto import mock_apigateway
 
 from alarm_craft.models import AlarmProps, MetricAlarmParam, TargetResource
 
+default_alarm_namespace = "AWS/ApiGateway"
+
 
 @pytest.fixture()
 def restapi():
@@ -47,13 +49,11 @@ def test_apigateway_provider_basic():
     """
     from alarm_craft.monitoring_targets.target_metrics_provider_apigw import ApiGatewayMetricsProvider
 
-    alarm_namespace = "AWS/APIGateway"
     alarm_metric_name = "TestsCount"
     resource_name1 = "restapi-1"
     resource_name2 = "restapi-2"
     resource_name3 = "restapi-3"
     config = _config(
-        alarm_namespace=alarm_namespace,
         alarm_metrics=[alarm_metric_name],
     )
 
@@ -67,7 +67,7 @@ def test_apigateway_provider_basic():
             ),
             AlarmProps=AlarmProps(
                 MetricName=alarm_metric_name,
-                Namespace=alarm_namespace,
+                Namespace=default_alarm_namespace,
                 Dimensions=[{"Name": "ApiName", "Value": resource_name1}],
             ),
         ),
@@ -77,7 +77,7 @@ def test_apigateway_provider_basic():
             ),
             AlarmProps=AlarmProps(
                 MetricName=alarm_metric_name,
-                Namespace=alarm_namespace,
+                Namespace=default_alarm_namespace,
                 Dimensions=[{"Name": "ApiName", "Value": resource_name2}],
             ),
         ),
@@ -87,7 +87,7 @@ def test_apigateway_provider_basic():
             ),
             AlarmProps=AlarmProps(
                 MetricName=alarm_metric_name,
-                Namespace=alarm_namespace,
+                Namespace=default_alarm_namespace,
                 Dimensions=[{"Name": "ApiName", "Value": resource_name3}],
             ),
         ),
@@ -186,14 +186,12 @@ def test_apigateway_provider_through_get_target_metrics():
 def _config(
     target_resource_type: str = "",
     target_resource_tags: dict[str, str] = {},
-    alarm_namespace: str = "AWS/MyService",
     alarm_metrics: list[str] = ["NumOfTestFailures"],
 ):
     return {
         "target_resource_type": target_resource_type,
         "target_resource_tags": target_resource_tags,
         "alarm": {
-            "namespace": alarm_namespace,
             "metrics": alarm_metrics,
         },
     }

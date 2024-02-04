@@ -72,7 +72,6 @@ def test_inherit_metrics_provider(mocker: MockerFixture, target_resource_type, s
                 "target_resource_type": target_resource_type,
                 "target_resource_name_pattern": "^test1$",
                 "alarm": {
-                    "namespace": "",  # not used
                     "metrics": [alarm_metric_name],
                 },
             },
@@ -115,7 +114,6 @@ def test_inherit_metrics_provider_no_match_pattern(
                 "target_resource_type": target_resource_type,
                 "target_resource_name_pattern": "test2",
                 "alarm": {
-                    "namespace": "",  # not used
                     "metrics": [alarm_metric_name],
                 },
             },
