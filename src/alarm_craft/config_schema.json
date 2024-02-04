@@ -94,8 +94,7 @@
                     "properties": {
                         "namespace": {
                             "type": "string",
-                            "description": "namespace of the metric if you monitor a custom metric",
-                            "default": "[Metrics published by AWS Services](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/aws-services-cloudwatch-metrics.html)"
+                            "description": "namespace of the metric if you monitor a custom metric. The default is namespace of the [Metrics published by AWS Services](https://docs.aws.amazon.com/AmazonCloudWatch/latest/monitoring/aws-services-cloudwatch-metrics.html)"
                         },
                         "metrics": {
                             "type": "array",
