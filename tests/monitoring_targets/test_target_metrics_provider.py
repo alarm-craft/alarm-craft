@@ -1,4 +1,4 @@
-from typing import Mapping, Sequence
+from typing import Mapping, Optional, Sequence
 
 import pytest
 from pytest_mock import MockerFixture
@@ -29,6 +29,14 @@ class MyTestMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
         name = self.get_resource_name(arn)
         return [{"Name": "MyTestName", "Value": name}]
 
+    def get_default_namespace(self) -> str:
+        """Gets alarm namespace
+
+        Returns:
+            str: alarm namespace
+        """
+        return "AWS/MyService"
+
 
 def test_base_provider(mocker: MockerFixture):
     """Test for ResourceGroupsTaggingAPITargetMetricsProviderBase
@@ -43,7 +51,7 @@ def test_base_provider(mocker: MockerFixture):
     alarm_metric_name = "NumOfTestFailure"
     resource_name1 = "my-test-1"
     resource_name2 = "my-test-2"
-    config = _config(alarm_namespace=alarm_namespace, alarm_metrics=[alarm_metric_name])
+    config = _config(alarm_metrics=[alarm_metric_name])
 
     mock_get_resources.return_value = {
         "ResourceTagMappingList": [
@@ -128,11 +136,10 @@ def test_base_provider_with_resource_name_pattern(mocker: MockerFixture):
     mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
     mock_get_resources = mock_boto3.client.return_value.get_resources
 
-    alarm_namespace = "AWS/MyService"
     alarm_metric_name = "NumOfTestFailure"
     pattern = "^test-(red|blue)-(bird|cat)"
 
-    config = _config(alarm_namespace=alarm_namespace, alarm_metrics=[alarm_metric_name])
+    config = _config(alarm_metrics=[alarm_metric_name])
     config["target_resource_name_pattern"] = pattern
 
     resource_name1 = "test-red-dog-0001"
@@ -200,7 +207,6 @@ def test_base_provider_optional_config_key(mocker: MockerFixture):
     config = {
         "target_resource_type": target_resource_type,
         "alarm": {
-            "namespace": "",
             "metrics": [],
         },
     }
@@ -211,6 +217,33 @@ def test_base_provider_optional_config_key(mocker: MockerFixture):
     assert len(list(target.get_metric_alarms())) == 0
 
     mock_get_resources.assert_called_once_with(PaginationToken="", ResourceTypeFilters=[target_resource_type])
+
+
+def test_alarm_namespace_for_custom_metric(mocker: MockerFixture):
+    """Test for ResourceGroupsTaggingAPITargetMetricsProviderBase with alarm param overrides
+
+    Args:
+        mocker (MockerFixture): mocker
+    """
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
+    mock_get_resources = mock_boto3.client.return_value.get_resources
+    resource_name1 = "my-test-1"
+    namespace = "Custom/MyTarget"
+    metric = "MyMetric"
+    config = _config(alarm_namespace=namespace, alarm_metrics=[metric])
+
+    mock_get_resources.return_value = {
+        "ResourceTagMappingList": [
+            {"ResourceARN": "arn:aws:myservice:ap-northeast-1:123456789012:myresource:" + resource_name1},
+        ]
+    }
+
+    target = MyTestMetricsProvider(config, "myservice")
+    alarms = list(target.get_metric_alarms())
+    assert len(alarms) == 1
+
+    assert alarms[0]["AlarmProps"]["Namespace"] == namespace
+    assert alarms[0]["AlarmProps"]["MetricName"] == metric
 
 
 def test_param_overrides(mocker: MockerFixture):
@@ -337,14 +370,17 @@ def test_api_pagenation(mocker: MockerFixture):
 def _config(
     target_resource_type: str = "",
     target_resource_tags: dict[str, str] = {},
-    alarm_namespace: str = "AWS/MyService",
+    alarm_namespace: Optional[str] = None,
     alarm_metrics: list[str] = ["NumOfTestFailures"],
 ):
-    return {
+    conf = {
         "target_resource_type": target_resource_type,
         "target_resource_tags": target_resource_tags,
         "alarm": {
-            "namespace": alarm_namespace,
             "metrics": alarm_metrics,
         },
     }
+    if alarm_namespace:
+        conf["alarm"]["namespace"] = alarm_namespace  # type: ignore
+
+    return conf

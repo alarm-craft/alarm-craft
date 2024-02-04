@@ -31,7 +31,6 @@ With modern architectures such as serverless and microservices, the number of re
      lambda:
        target_resource_type: "lambda:function"
        alarm:
-         namespace: "AWS/Lambda"
          metrics:
            - Errors
    ```

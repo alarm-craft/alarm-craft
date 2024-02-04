@@ -56,3 +56,11 @@ class ApiGatewayMetricsProvider(TargetMetricsProviderBase[str]):
             Sequence[Mapping[str, str]]: alarm dimensions
         """
         return [{"Name": "ApiName", "Value": api_name}]
+
+    def get_default_namespace(self) -> str:
+        """Gets alarm namespace
+
+        Returns:
+            str: alarm namespace
+        """
+        return "AWS/ApiGateway"

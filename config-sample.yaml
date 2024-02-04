@@ -25,7 +25,6 @@ resources:
   lambda:
     target_resource_type: lambda:function
     alarm:
-      namespace: AWS/Lambda
       metrics:
       - Errors
       - Throttled
@@ -33,14 +32,12 @@ resources:
   apigateway:
     target_resource_type: apigateway:restapi
     alarm:
-      namespace: AWS/ApiGateway
       metrics:
       - 5XXError
 
   eventbridge:
     target_resource_type: events:rule
     alarm:
-      namespace: AWS/Events
       metrics:
       - FailedInvocations
       - ThrottledRules
@@ -48,7 +45,6 @@ resources:
   sns:
     target_resource_type: sns:topic
     alarm:
-      namespace: AWS/SNS
       metrics:
       - NumberOfNotificationsFailed
 
@@ -57,7 +53,6 @@ resources:
     target_resource_tags:
       alarm-craft:sqs:main-queue: 'true'
     alarm:
-      namespace: AWS/SQS
       metrics:
       - ApproximateAgeOfOldestMessage
       - ApproximateNumberOfMessagesVisible
@@ -74,7 +69,6 @@ resources:
     target_resource_tags:
       alarm-craft:sqs:dlq: 'true'
     alarm:
-      namespace: AWS/SQS
       metrics:
       - ApproximateNumberOfMessagesVisible
       - ApproximateAgeOfOldestMessage
@@ -86,7 +80,6 @@ resources:
   stepfunctions:
     target_resource_type: states:stateMachine
     alarm:
-      namespace: AWS/States
       metrics:
       - ExecutionsFailed
       - ExecutionsTimedOut

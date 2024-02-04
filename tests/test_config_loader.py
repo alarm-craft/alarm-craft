@@ -16,7 +16,7 @@ def _missing_conf_message_data():
         {
             "resources": {
                 "lambda": {
-                    "alarm": {"namespace": "", "metrics": [""]},
+                    "alarm": {"metrics": [""]},
                 }
             }
         },
@@ -31,15 +31,7 @@ def _missing_conf_message_data():
             "resources": {
                 "lambda": {
                     "target_resource_type": "lambda:function",
-                    "alarm": {"metrics": [""]},  # invalid
-                }
-            }
-        },
-        {
-            "resources": {
-                "lambda": {
-                    "target_resource_type": "lambda:function",
-                    "alarm": {"namespace": ""},  # invalid
+                    "alarm": {},  # invalid
                 }
             }
         },
@@ -48,7 +40,7 @@ def _missing_conf_message_data():
                 "lambda": {
                     "target_resource_type": "lambda:function",
                     "target_resource_tags": {},  # invalid
-                    "alarm": {"namespace": "", "metrics": [""]},
+                    "alarm": {"metrics": [""]},
                 }
             }
         },
@@ -56,7 +48,7 @@ def _missing_conf_message_data():
             "resources": {
                 "lambda": {
                     "target_resource_type": "lambda:function",
-                    "alarm": {"namespace": "", "metrics": []},  # invalid
+                    "alarm": {"metrics": []},  # invalid
                 }
             }
         },
@@ -67,7 +59,6 @@ def _missing_conf_message_data():
         "non-empty",  # `resources` must have 1 or more key(s)
         "target_resource_type",
         "alarm",
-        "namespace",
         "metrics",
         "non-empty",  # `target_resource_tags`` must have 1 or more key(s)
         "non-empty",  # `metrics` must have 1 or more str(s)
@@ -97,7 +88,6 @@ def test_load_global_default_config(tmp_path: Path):
             "1": {
                 "target_resource_type": "lambda:function",
                 "alarm": {
-                    "namespace": "",
                     "metrics": [""],
                 },
             },
@@ -130,14 +120,12 @@ def test_merge_global_name_conf(tmp_path: Path):
                 "target_resource_type": "lambda:function",
                 "target_resource_name_pattern": "overridden_pattern_321",
                 "alarm": {
-                    "namespace": "",
                     "metrics": [""],
                 },
             },
             "myservice2": {
                 "target_resource_type": "lambda:function",
                 "alarm": {
-                    "namespace": "",
                     "metrics": [""],
                 },
             },
@@ -169,7 +157,6 @@ def test_merge_global_tag_conf(tmp_path: Path):
                 "target_resource_tags": {"tag1": "value1"},
                 "target_resource_type": "lambda:function",
                 "alarm": {
-                    "namespace": "",
                     "metrics": [""],
                 },
             },
@@ -177,7 +164,6 @@ def test_merge_global_tag_conf(tmp_path: Path):
                 "target_resource_tags": {"tag2": "value2"},
                 "target_resource_type": "lambda:function",
                 "alarm": {
-                    "namespace": "",
                     "metrics": [""],
                 },
             },
@@ -185,7 +171,6 @@ def test_merge_global_tag_conf(tmp_path: Path):
                 "target_resource_tags": {"tag1": "value1", "tag2": "value2"},
                 "target_resource_type": "lambda:function",
                 "alarm": {
-                    "namespace": "",
                     "metrics": [""],
                 },
             },
@@ -236,7 +221,6 @@ def test_conf_in_yaml(tmp_path: Path, config_file: str):
                 "target_resource_tags": {"tag1": "value1"},
                 "target_resource_type": "lambda:function",
                 "alarm": {
-                    "namespace": "",
                     "metrics": [""],
                 },
             },
@@ -244,7 +228,6 @@ def test_conf_in_yaml(tmp_path: Path, config_file: str):
                 "target_resource_tags": {"tag2": "value2"},
                 "target_resource_type": "lambda:function",
                 "alarm": {
-                    "namespace": "",
                     "metrics": [""],
                 },
             },
@@ -252,7 +235,6 @@ def test_conf_in_yaml(tmp_path: Path, config_file: str):
                 "target_resource_tags": {"tag1": "value1", "tag2": "value2"},
                 "target_resource_type": "lambda:function",
                 "alarm": {
-                    "namespace": "",
                     "metrics": [""],
                 },
             },
@@ -279,7 +261,6 @@ def test_default_conf_filename(tmp_path: Path):
                     "target_resource_type": "lambda:function",
                     "target_resource_tags": {"filename": filename},
                     "alarm": {
-                        "namespace": "",
                         "metrics": [""],
                     },
                 },

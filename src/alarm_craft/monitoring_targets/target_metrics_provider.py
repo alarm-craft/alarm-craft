@@ -77,13 +77,26 @@ class TargetMetricsProviderBase(TargetMetricsProvider, Generic[T]):
         """
         pass
 
+    @abstractmethod
+    def get_default_namespace(self) -> str:
+        """Gets default namespace
+
+        Returns:
+            str: default namespace
+        """
+        pass
+
     def namespace(self) -> str:
         """Gets alarm namespace
 
         Returns:
             str: alarm namespace
         """
-        return str(self.resource_config["alarm"]["namespace"])
+        namespace = self.resource_config["alarm"].get("namespace")
+        if namespace:
+            return namespace
+        else:
+            return self.get_default_namespace()
 
     def metric_names(self, resource: T) -> Sequence[str]:
         """Gets metric names

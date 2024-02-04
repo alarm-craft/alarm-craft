@@ -355,7 +355,6 @@ def _config(alarm_name_prefix: str = DEFAULT_ALARM_NAME_PREFIX, alarm_actions: l
             "dummy": {
                 "target_resource_type": "lambda:function",
                 "alarm": {
-                    "namespace": "dummy",
                     "metrics": ["dummy"],
                 },
             },
