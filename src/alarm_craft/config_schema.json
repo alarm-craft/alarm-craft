@@ -179,6 +179,7 @@
                 "lambda:function",
                 "states:stateMachine",
                 "apigateway:restapi",
+                "apigateway:apis",
                 "sns:topic",
                 "sqs:queue",
                 "events:rule"

@@ -11,6 +11,7 @@ def _test_params(name1: str = "test1"):
         "sqs:queue",
         "states:stateMachine",
         "events:rule",
+        "apigateway:apis",
     ]
     service_name = [
         "lambda",
@@ -18,6 +19,7 @@ def _test_params(name1: str = "test1"):
         "sqs",
         "stepfunctions",
         "event",
+        "apigateway",
     ]
     resource_type = [
         ":function",
@@ -25,12 +27,14 @@ def _test_params(name1: str = "test1"):
         "",  # queue
         ":statemachine",
         ":rule",
+        ":/apis",
     ]
     name_sep = [
         ":",
         ":",
         ":",
         ":",
+        "/",
         "/",
     ]
 
@@ -46,6 +50,7 @@ def _test_params(name1: str = "test1"):
         [{"Name": "QueueName", "Value": name1}],
         [{"Name": "StateMachineArn", "Value": arn[index_for_sfn]}],
         [{"Name": "RuleName", "Value": name1}],
+        [{"Name": "ApiId", "Value": name1}],
     ]
     return zip(target_resource_type, service_name, arn, dimensions)
 
@@ -187,3 +192,49 @@ def test_get_target_metrics(mocker: MockerFixture):
         assert expected_param["TargetResource"] == alarm_params[i]["TargetResource"]
         for k, v in expected_param["AlarmProps"].items():
             assert alarm_params[i]["AlarmProps"][k] == v  # type: ignore
+
+
+def test_apigateway_v2_metrics_provider_create_resource_filter(mocker: MockerFixture):
+    """Test create_resource_filter() of ApiGatewayV2MetricsProvider
+
+    Args:
+        mocker (MockerFixture): mocker
+    """
+    config = {
+        "resources": {
+            "test": {
+                "target_resource_type": "apigateway:apis",
+                "alarm": {
+                    "metrics": ["Test"],
+                },
+            },
+        },
+    }
+    raw_arns = [
+        "arn:aws:apigateway:ap-northeast-1::/apis/abcd1234AB",
+        "arn:aws:apigateway:ap-northeast-1::/apis/abcd1234AB/stages/$default",
+        "arn:aws:apigateway:ap-northeast-1::/apis/efgh5678CD",
+        "arn:aws:apigateway:ap-northeast-1::/apis/efgh5678CD/stages/ProdCD",
+        "arn:aws:apigateway:ap-northeast-1::/apis/ijkl9012CD",
+        "arn:aws:apigateway:ap-northeast-1::/apis/ijkl9012CD/stages/StageAB",
+    ]
+    mock_resp = {"ResourceTagMappingList": [{"ResourceARN": arn} for arn in raw_arns]}
+    mock_boto3 = mocker.patch("alarm_craft.monitoring_targets.target_metrics_provider_rgta.boto3")
+    mock_get_resources = mock_boto3.client.return_value.get_resources
+    mock_get_resources.return_value = mock_resp
+
+    alarm_params = list(get_target_metrics(config))
+    actual = [a["TargetResource"]["ResourceName"] for a in alarm_params]
+    assert actual == [
+        "abcd1234AB",
+        "efgh5678CD",
+        "ijkl9012CD",
+    ]
+
+    config["resources"]["test"]["target_resource_name_pattern"] = ".*CD$"
+    alarm_params = list(get_target_metrics(config))
+    actual = [a["TargetResource"]["ResourceName"] for a in alarm_params]
+    assert actual == [
+        "efgh5678CD",
+        "ijkl9012CD",
+    ]
