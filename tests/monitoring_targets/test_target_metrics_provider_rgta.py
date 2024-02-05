@@ -12,6 +12,7 @@ def _test_params(name1: str = "test1"):
         "states:stateMachine",
         "events:rule",
         "apigateway:apis",
+        "scheduler:schedule-group",
     ]
     service_name = [
         "lambda",
@@ -20,6 +21,7 @@ def _test_params(name1: str = "test1"):
         "stepfunctions",
         "event",
         "apigateway",
+        "scheduler",
     ]
     resource_type = [
         ":function",
@@ -28,12 +30,14 @@ def _test_params(name1: str = "test1"):
         ":statemachine",
         ":rule",
         ":/apis",
+        ":schedule-group",
     ]
     name_sep = [
         ":",
         ":",
         ":",
         ":",
+        "/",
         "/",
         "/",
     ]
@@ -51,12 +55,24 @@ def _test_params(name1: str = "test1"):
         [{"Name": "StateMachineArn", "Value": arn[index_for_sfn]}],
         [{"Name": "RuleName", "Value": name1}],
         [{"Name": "ApiId", "Value": name1}],
+        [{"Name": "ScheduleGroup", "Value": name1}],
     ]
-    return zip(target_resource_type, service_name, arn, dimensions)
+    namespaces = [
+        "AWS/Lambda",
+        "AWS/SNS",
+        "AWS/SQS",
+        "AWS/States",
+        "AWS/Events",
+        "AWS/ApiGateway",
+        "AWS/Scheduler",
+    ]
+    return zip(target_resource_type, service_name, arn, dimensions, namespaces)
 
 
-@pytest.mark.parametrize("target_resource_type, service_name, arn, dimensions", _test_params())
-def test_inherit_metrics_provider(mocker: MockerFixture, target_resource_type, service_name, arn, dimensions):
+@pytest.mark.parametrize("target_resource_type, service_name, arn, dimensions, namespace", _test_params())
+def test_inherit_metrics_provider(
+    mocker: MockerFixture, target_resource_type, service_name, arn, dimensions, namespace
+):
     """Test provider classes inherited from ResourceGroupsTaggingAPITargetMetricsProviderBase
 
     Args:
@@ -94,11 +110,12 @@ def test_inherit_metrics_provider(mocker: MockerFixture, target_resource_type, s
     assert alarms[0]["TargetResource"]["ResourceName"] == resource_name
     assert alarms[0]["AlarmProps"]["MetricName"] == alarm_metric_name
     assert alarms[0]["AlarmProps"]["Dimensions"] == dimensions
+    assert alarms[0]["AlarmProps"]["Namespace"] == namespace
 
 
-@pytest.mark.parametrize("target_resource_type, service_name, arn, dimensions", _test_params())
+@pytest.mark.parametrize("target_resource_type, service_name, arn, dimensions, namespace", _test_params())
 def test_inherit_metrics_provider_no_match_pattern(
-    mocker: MockerFixture, target_resource_type, service_name, arn, dimensions
+    mocker: MockerFixture, target_resource_type, service_name, arn, dimensions, namespace
 ):
     """Test provider classes inherited from ResourceGroupsTaggingAPITargetMetricsProviderBase
 
@@ -135,7 +152,7 @@ def test_inherit_metrics_provider_no_match_pattern(
     assert len(alarms) == 0
 
 
-def test_get_target_metrics(mocker: MockerFixture):
+def test_custom_namespaces(mocker: MockerFixture):
     """Test get_target_metrics()
 
     Test with config specifying provider classes inherited
@@ -148,8 +165,8 @@ def test_get_target_metrics(mocker: MockerFixture):
     resource_configs = {}
     mock_result = {}
     expects: list[dict] = []
-    for target_resource_type, service_name, arn, dimensions in _test_params(resource_name):
-        namespace = "AWS/" + service_name
+    for target_resource_type, service_name, arn, dimensions, _ in _test_params(resource_name):
+        namespace = "Custom/" + service_name  # custom namespace
         metric_name = "TestMetric"
         resource_configs[service_name] = {
             "target_resource_type": target_resource_type,
