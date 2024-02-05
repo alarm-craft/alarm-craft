@@ -305,3 +305,41 @@ class ApiGatewayV2MetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderB
             str: alarm namespace
         """
         return "AWS/ApiGateway"
+
+
+@metric_provider("scheduler:schedule-group")
+class EventBridgeSchedulerMetricsProvider(ResourceGroupsTaggingAPITargetMetricsProviderBase):
+    """EventBridge Scheduler Metrics Provider"""
+
+    def get_resource_name(self, arn: str) -> str:
+        """Gets resource name
+
+        Args:
+            arn (T): resource
+
+        Returns:
+            str: resource name
+        """
+        # "arn:aws:scheduler:ap-northeast-1:123456789012:schedule-group/name-of-schedulegroup"
+        return self.arn_pattern_name_by_slash.sub("", arn, 1)
+
+    def dimensions(self, metric_name: str, arn: str) -> Sequence[Mapping[str, str]]:
+        """Gets alarm dimensions
+
+        Args:
+            metric_name (str): metric name
+            arn (T): resource
+
+        Returns:
+            Sequence[Mapping[str, str]]: alarm dimensions
+        """
+        name = self.get_resource_name(arn)
+        return [{"Name": "ScheduleGroup", "Value": name}]
+
+    def get_default_namespace(self) -> str:
+        """Gets alarm namespace
+
+        Returns:
+            str: alarm namespace
+        """
+        return "AWS/Scheduler"
