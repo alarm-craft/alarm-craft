@@ -182,7 +182,8 @@
                 "apigateway:apis",
                 "sns:topic",
                 "sqs:queue",
-                "events:rule"
+                "events:rule",
+                "scheduler:schedule-group"
             ]
         }
     }
