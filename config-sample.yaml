@@ -42,6 +42,15 @@ resources:
       - FailedInvocations
       - ThrottledRules
 
+  scheduler:
+    target_resource_type: scheduler:schedule-group
+    alarm:
+      metrics:
+      - TargetErrorCount
+      - TargetErrorThrottledCount
+      - InvocationThrottleCount
+      - InvocationDroppedCount
+
   sns:
     target_resource_type: sns:topic
     alarm:
