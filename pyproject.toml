@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "alarm-craft"
-version = "0.2.3.dev0"
+version = "1.0.0"
 authors = [
   { name="Ryo Murai", email="murai.ry@gmail.com" },
 ]
@@ -12,6 +12,7 @@ description = "A tool to create AWS CloudWatch Alarms for your resources with sp
 readme = "README.md"
 requires-python = ">=3.9"
 classifiers = [
+    "Development Status :: 5 - Production/Stable",
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
@@ -36,6 +37,7 @@ Documentation = "https://github.com/ryo-murai/alarm-craft?tab=readme-ov-file#aws
 Homepage = "https://github.com/ryo-murai/alarm-craft"
 Source = "https://github.com/ryo-murai/alarm-craft.git"
 Issues = "https://github.com/ryo-murai/alarm-craft/issues"
+Changelog = "https://raw.githubusercontent.com/ryo-murai/alarm-craft/main/CHANGELOG.md"
 
 [project.scripts]
 alarm-craft = "alarm_craft.cli:run"
