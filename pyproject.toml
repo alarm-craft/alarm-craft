@@ -1,10 +1,10 @@
 [build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
+requires = ["hatchling"]
+build-backend = "hatchling.build"
 
 [project]
 name = "alarm-craft"
-version = "1.0.0"
+version = "1.0.1"
 authors = [
   { name="Ryo Murai", email="murai.ry@gmail.com" },
 ]
@@ -33,11 +33,11 @@ dependencies = [
 ]
 
 [project.urls]
-Documentation = "https://github.com/ryo-murai/alarm-craft?tab=readme-ov-file#aws-cloudwatch-alarm-craft"
-Homepage = "https://github.com/ryo-murai/alarm-craft"
-Source = "https://github.com/ryo-murai/alarm-craft.git"
-Issues = "https://github.com/ryo-murai/alarm-craft/issues"
-Changelog = "https://raw.githubusercontent.com/ryo-murai/alarm-craft/main/CHANGELOG.md"
+Documentation = "https://github.com/alarm-craft/alarm-craft/tree/main?tab=readme-ov-file#readme"
+Homepage = "https://github.com/alarm-craft/alarm-craft"
+Source = "https://github.com/alarm-craft/alarm-craft.git"
+Issues = "https://github.com/alarm-craft/alarm-craft/issues"
+Changelog = "https://github.com/alarm-craft/alarm-craft/blob/main/CHANGELOG.md"
 
 [project.scripts]
 alarm-craft = "alarm_craft.cli:run"
