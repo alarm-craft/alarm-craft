@@ -53,15 +53,19 @@ def _missing_conf_message_data():
             }
         },
     ]
+
     # note: these portions of error messages may modified in a new version of libs.
+    #  case1: missing properties
+    missing_props = "does not have enough properties"
+    num_elements = "too short"
     words = [
         "resources",
-        "non-empty",  # `resources` must have 1 or more key(s)
+        missing_props,  # `resources` must have 1 or more key(s)
         "target_resource_type",
         "alarm",
         "metrics",
-        "non-empty",  # `target_resource_tags`` must have 1 or more key(s)
-        "non-empty",  # `metrics` must have 1 or more str(s)
+        missing_props,  # `target_resource_tags`` must have 1 or more key(s)
+        num_elements,  # `metrics` must have 1 or more str(s)
     ]
 
     return zip(conf, words)
@@ -78,7 +82,7 @@ def test_insufficient_config(tmp_path: Path, conf: Dict, word_in_message: str):
         # execute test
         config_loader.load(str(config_path))
 
-    assert word_in_message in e.value.message  # type: ignore
+    assert word_in_message in e.value.message or "does not have enough properties" in e.value.message  # type: ignore
 
 
 def test_load_global_default_config(tmp_path: Path):
